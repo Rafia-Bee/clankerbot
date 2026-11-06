@@ -1,0 +1,7 @@
+.env
+node_modules/
+docs/
+data/
+tools/
+server.env
+clanker-copy.db*

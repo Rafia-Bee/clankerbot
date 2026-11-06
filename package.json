@@ -1,0 +1,23 @@
+{
+  "name": "clanker",
+  "version": "1.0.0",
+  "description": "Clanker - a Discord bot for my guild server with tickets, polls, character lookups and mod tools.",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.2.2"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "tickets",
+    "polls"
+  ],
+  "author": "",
+  "license": "MIT"
+}

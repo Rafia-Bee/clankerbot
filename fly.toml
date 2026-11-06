@@ -1,0 +1,18 @@
+app = "clanker"
+primary_region = "fra"
+swap_size_mb = 512
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ENV_FILE = "/data/.env"
+  NODE_OPTIONS = "--max-old-space-size=192"
+
+[mounts]
+  source = "clanker_data"
+  destination = "/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
