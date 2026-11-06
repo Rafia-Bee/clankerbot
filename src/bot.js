@@ -100,7 +100,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isButton() || interaction.isModalSubmit()) {
+  if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
     const handler = componentHandlers.get(interaction.customId.split(":")[0]);
     if (!handler) return;
     try {

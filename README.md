@@ -135,6 +135,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 
 | Command | What it does | Who can use it |
 | --- | --- | --- |
+| `/ticket-setup` | Make a ticket panel step by step. See [Tickets](#tickets). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
@@ -180,15 +181,29 @@ Each ticket type uses two categories: one for **open** tickets and one for **clo
 
 A category holds at most 50 channels (Discord's limit). If the open category is full, members are told tickets are full and to message a staff member.
 
-### Posting a panel
+### Making a panel with /ticket-setup
 
-A setup wizard (`/ticket-setup`) is on the way. Until then, panels are made from a settings file:
+Run `/ticket-setup` (Manage Server). A setup screen opens that only you can see. It shows a preview of the panel, the ticket types so far, and what's still needed.
+
+1. **Panel text:** the title, description (Discord formatting works), colour, an optional picture, and the channel to post in.
+2. **Add ticket type:** one per button. Each ticket type has three pop-ups:
+   - **Basics:** the button text, emoji and colour, how ticket channels are named, and after how many days closed tickets are deleted (`0` for never).
+   - **Where and who:** the categories for open and closed tickets, the staff roles, and how many open tickets a member can have at once. A new type starts with the previous type's categories and staff roles.
+   - **Opening messages:** up to 4 messages posted when a ticket opens. `{member}` pings the member, `{staff}` pings the staff roles, `{type}` is the button text. Tick **Show as a box** to show a message in a coloured box (pings don't work in boxes). Put any questions for the member here.
+3. Pick a ticket type from the **Edit a ticket type** dropdown to change it, move it up or down, or remove it.
+4. **Publish** lights up once nothing is missing. It posts the panel, and members can open tickets straight away.
+
+Your setup is saved as you go. If you close it or the bot restarts, run `/ticket-setup` again to pick up where you left off. **Cancel** throws the setup away.
+
+### Making a panel from a settings file
+
+You can also make a panel from a settings file, which is handy for copying a panel or for more than 4 opening messages:
 
 1. Copy `scripts/panel.example.json` to `data/panel.json`. The `data` folder isn't uploaded to GitHub.
 2. Fill in the IDs: the channel for the panel, the two categories for each ticket type, and the staff roles. Change the text and buttons to what you want.
 3. Run `node scripts/create-panel.js data/panel.json` (or `cpanel data/panel.json`). If something's wrong in the file, it lists every problem. Otherwise the panel appears in the channel.
 
-The settings in the file:
+The settings in the file. Put every ID in quotes, like `"1567942746155786370"`. Without quotes, the numbers are too long and get rounded.
 
 | Setting | What it is |
 | --- | --- |

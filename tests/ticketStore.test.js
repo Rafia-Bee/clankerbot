@@ -128,6 +128,19 @@ test("lists closed tickets with their type's delete-after days", () => {
   assert.ok(closed[0].closed_at <= Date.now() && closed[0].closed_at > Date.now() - DAY_MS);
 });
 
+test("saves, replaces and removes a setup draft per member and server", () => {
+  assert.equal(store.getDraft("5", "1"), null);
+  store.saveDraft("5", "1", { title: "First" });
+  store.saveDraft("5", "1", { title: "Second" });
+  store.saveDraft("6", "1", { title: "Other member" });
+  assert.deepEqual(store.getDraft("5", "1"), { title: "Second" });
+  assert.deepEqual(store.getDraft("6", "1"), { title: "Other member" });
+  assert.equal(store.getDraft("5", "2"), null);
+  store.deleteDraft("5", "1");
+  assert.equal(store.getDraft("5", "1"), null);
+  assert.deepEqual(store.getDraft("6", "1"), { title: "Other member" });
+});
+
 test("a channel deleted by hand marks its ticket deleted", () => {
   const id = openTicket();
   assert.equal(store.markChannelDeleted("100"), true);

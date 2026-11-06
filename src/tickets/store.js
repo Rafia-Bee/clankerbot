@@ -16,6 +16,9 @@
 //   deleteTicket       any status to deleted (false if it already was)
 //   listClosedTickets  closed tickets with their type's delete-after days
 //   markChannelDeleted marks a ticket deleted when its channel was deleted by hand
+//   getDraft           a member's unfinished /ticket-setup draft for a server, or null
+//   saveDraft          saves (or replaces) that draft
+//   deleteDraft        removes it once it's published or cancelled
 
 const TICKET_SCHEMA = `
 CREATE TABLE IF NOT EXISTS ticket_panels (
@@ -72,6 +75,13 @@ CREATE TABLE IF NOT EXISTS tickets (
 );
 CREATE INDEX IF NOT EXISTS tickets_by_opener ON tickets (type_id, opener_id, status);
 CREATE INDEX IF NOT EXISTS tickets_by_status ON tickets (status);
+CREATE TABLE IF NOT EXISTS setup_drafts (
+  user_id          TEXT NOT NULL,
+  guild_id         TEXT NOT NULL,
+  data             TEXT NOT NULL,
+  updated_at       INTEGER NOT NULL,
+  PRIMARY KEY (user_id, guild_id)
+);
 `;
 
 function createTicketStore(db) {
@@ -128,6 +138,12 @@ function createTicketStore(db) {
     markChannelDeleted: db.prepare(
       "UPDATE tickets SET status = 'deleted', deleted_at = ? WHERE channel_id = ? AND status != 'deleted'"
     ),
+    getDraft: db.prepare("SELECT data FROM setup_drafts WHERE user_id = ? AND guild_id = ?"),
+    saveDraft: db.prepare(`
+      INSERT INTO setup_drafts (user_id, guild_id, data, updated_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT (user_id, guild_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at
+    `),
+    deleteDraft: db.prepare("DELETE FROM setup_drafts WHERE user_id = ? AND guild_id = ?"),
   };
 
   const createPanel = db.transaction((panel) => {
@@ -179,6 +195,12 @@ function createTicketStore(db) {
     deleteTicket: (ticketId, by) => s.delete.run(by, Date.now(), ticketId).changes > 0,
     listClosedTickets: () => s.listClosed.all(),
     markChannelDeleted: (channelId) => s.markChannelDeleted.run(Date.now(), channelId).changes > 0,
+    getDraft(userId, guildId) {
+      const row = s.getDraft.get(userId, guildId);
+      return row ? JSON.parse(row.data) : null;
+    },
+    saveDraft: (userId, guildId, draft) => s.saveDraft.run(userId, guildId, JSON.stringify(draft), Date.now()),
+    deleteDraft: (userId, guildId) => s.deleteDraft.run(userId, guildId),
   };
 }
 
