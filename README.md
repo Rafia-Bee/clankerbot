@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Right now it can look up AION 2 characters and delete recent messages. Tickets and polls are on the way.
+A Discord bot for my guild server. Right now it can look up AION 2 characters, post polls and delete recent messages. Tickets are on the way.
 
 ## What you need
 
@@ -24,7 +24,7 @@ npm install
 2. **Bot** tab: click **Reset Token** and copy the token. You'll need it in step 3. Keep it secret: anyone with it can control the bot.
 3. **OAuth2 → URL Generator**: tick `bot` and `applications.commands`, then tick these permissions:
    - View Channels, Send Messages, Embed Links, Read Message History
-   - Manage Messages
+   - Manage Messages, Send Polls
 4. Open the link it gives you at the bottom, pick your server, and click **Authorize**.
 
 The bot doesn't need any of the "Privileged Gateway Intents" switches on the **Bot** tab. Leave them off.
@@ -121,9 +121,23 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | Command | What it does | Who can use it |
 | --- | --- | --- |
 | `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
+| `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
+
+## Polls
+
+`/poll` posts a normal Discord poll, so voting and results work like any poll in Discord.
+
+- **question:** what to ask, up to 300 characters.
+- **answers:** 2 to 10 answers separated by `;`, like `Pizza; Sushi; Tacos`. Each answer can be up to 55 characters.
+- **duration** *(optional)*: how long it stays open, in hours and days: `12h`, `3d`, `1d 12h`, or just a number of hours. From 1 hour up to 32 days. Leave it empty for 24 hours.
+- **multiple** *(optional)*: `True` lets people pick more than one answer.
+
+If something's wrong (one answer, a typo in the duration), only you see the message saying what to fix.
+
+As with any Discord poll, anyone can see who voted for what.
 
 ## Character lookups
 
@@ -146,6 +160,7 @@ Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` sk
 - **"The application did not respond":** the bot isn't running. Start it with `npm start`, or check `fly logs` if it's on Fly.io.
 - **"I need View Channel, Read Message History and Manage Messages in this channel":** give the bot's role those permissions, in Server Settings or in that channel's settings.
 - **The bot won't start and says settings are missing:** fill those in `.env`.
+- **`/poll` says something went wrong:** give the bot's role the **Send Polls** permission, in Server Settings or in that channel's settings.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.
 - **`/whois` says a character doesn't exist, but it does:** check the spelling. Characters hidden on aion2index are still found through shugo.gg.
