@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Right now it can look up AION 2 characters, post polls and delete recent messages. Tickets are on the way.
+A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It can also look characters up, post polls and delete recent messages. Tickets are on the way.
 
 ## What you need
 
@@ -25,7 +25,10 @@ npm install
 3. **OAuth2 → URL Generator**: tick `bot` and `applications.commands`, then tick these permissions:
    - View Channels, Send Messages, Embed Links, Read Message History
    - Manage Messages, Send Polls
+   - Manage Roles, Manage Nicknames
 4. Open the link it gives you at the bottom, pick your server, and click **Authorize**.
+
+Already invited the bot without some of these? Add them to the bot's role in **Server Settings → Roles** instead.
 
 The bot doesn't need any of the "Privileged Gateway Intents" switches on the **Bot** tab. Leave them off.
 
@@ -41,10 +44,18 @@ To copy IDs, turn on **Developer Mode** in Discord (**User Settings → Advanced
 | `CLIENT_ID` | Developer Portal → **General Information** → **Application ID** |
 | `GUILD_ID` | Your server's ID |
 | `AION2INDEX_API_KEY` | The key for character lookups, from the [aion2index community panel](https://aion2index.com/communities/docs). You can use the same key as orcabot. See [Character lookups](#character-lookups). |
+| `GUILD_ROLE_ID` | The guild role, for members of your legion |
+| `TRUSTED_ROLE_ID` | The trusted role, also for members of your legion |
+| `GUEST_ROLE_ID` | The role for everyone else who verifies |
+| `VERIFY_LEGION` | Your legion's name as the game spells it. Starts as `Entropy`. |
 
 Everything else in `.env.example` already has a sensible value. Copy those lines over as they are.
 
-### 4. Register the commands and start the bot
+### 4. Set up your server
+
+In **Server Settings → Roles**, drag the bot's role **above** the Guild, Trusted and Guest roles. Discord only lets a bot give out roles that are below its own, and only rename members whose top role is below its own.
+
+### 5. Register the commands and start the bot
 
 ```bash
 node deploy-commands.js
@@ -53,9 +64,13 @@ npm start
 
 The first line tells Discord which slash commands the bot has. Run it again whenever a command is added or changed. When the bot is running you'll see `Logged in as Clanker#1234`.
 
+### 6. Post the Verify button
+
+Run `/verify-setup` in the channel where new members should verify. See [Verification](#verification).
+
 ## Hosting on Fly.io
 
-Fly.io keeps the bot running around the clock for a couple of dollars a month (the smallest machine plus 1 GB of storage). The bot's settings (`.env`) live on that storage, so they survive restarts and updates.
+Fly.io keeps the bot running around the clock for a couple of dollars a month (the smallest machine plus 1 GB of storage). The bot's settings (`.env`) and its database (who verified as which character) live on that storage, so they survive restarts and updates.
 
 ### First-time setup
 
@@ -120,11 +135,40 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 
 | Command | What it does | Who can use it |
 | --- | --- | --- |
+| `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
+| `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
+| `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
+| `/unverify user` | Remove a member's character and their Guild, Trusted and Guest roles, so the character can be verified by someone else | Manage Roles |
 | `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
 | `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
+
+## Verification
+
+Members click **Verify** under the message from `/verify-setup` and type their character name. The bot looks it up on Israphel and:
+
+- **In your legion (`VERIFY_LEGION`):** gives them the Guild and Trusted roles and renames them to their in-game name.
+- **In another legion, or none:** gives them the Guest role and renames them.
+- **Not found on Israphel** (another server, or a typo): gives them the Guest role and renames them to what they typed. They're told to check the spelling if they're in your legion.
+- **Already linked to someone else:** changes nothing and tells them to contact a mod. Each character can only belong to one Discord account. Use `/unverify` on the other account to free it.
+- **The lookup sites aren't answering:** changes nothing and asks them to try again in a few minutes.
+
+Verifying again with another character replaces the old one, and the roles and nickname follow the new character. The bot saves each member's character, so `/rename-members` can fix nicknames later (for example after someone renames their character in game, or changes their nickname by hand).
+
+**`/rename-members`** only changes nicknames, never roles. Without a `user`, it goes through every verified member, about 4 seconds each, and posts a summary in the channel when it's done. Members who verified with a name that wasn't found on Israphel are skipped. If a character isn't found any more (renamed or deleted in game), the summary lists them: they need to verify again with their new name.
+
+The bot can't rename the server owner (Discord doesn't allow it), or anyone whose top role is above the bot's role.
+
+### Verifying someone by hand
+
+`/verify-manual user name` does the same as the Verify button, for another member. Only you see the reply. The optional `roles` picks which roles they get:
+
+- **Auto** (the default): from their character's legion, like the Verify button. If the name isn't found on Israphel, or the lookup sites don't answer, the bot asks you to pick the roles instead.
+- **Guild and Trusted** or **Guest:** they get those roles whatever their legion is. Useful when their character is hidden on the lookup sites, or when the sites are down. If the name couldn't be checked, it's saved as typed, and `/rename-members` skips them.
+
+A character that's already linked to someone else is refused. The reply says who has it, so you can `/unverify` them first. If the game isn't answering and only older saved data is available, the bot uses it and says so.
 
 ## Polls
 
@@ -152,6 +196,7 @@ As with any Discord poll, anyone can see who voted for what.
 ## Testing
 
 - `npm run dev`: starts the bot and restarts it whenever you save a file.
+- `npm run db:reset`: wipes the saved characters (stop the bot first). Discord itself isn't touched: test accounts keep their roles and nicknames, so use `/unverify` on them first.
 - `npm test`: runs the automated checks.
 
 ## Something's not working?
@@ -160,6 +205,8 @@ As with any Discord poll, anyone can see who voted for what.
 - **"The application did not respond":** the bot isn't running. Start it with `npm start`, or check `fly logs` if it's on Fly.io.
 - **"I need View Channel, Read Message History and Manage Messages in this channel":** give the bot's role those permissions, in Server Settings or in that channel's settings.
 - **The bot won't start and says settings are missing:** fill those in `.env`.
+- **Verify says "I couldn't update everything on your profile":** drag the bot's role above the Guild, Trusted and Guest roles (setup step 4), and check it has Manage Roles and Manage Nicknames. The bot's log says which part failed. The server owner can never be renamed by a bot.
+- **"Problem with the verification settings":** fill in `GUILD_ROLE_ID`, `TRUSTED_ROLE_ID` and `GUEST_ROLE_ID` in `.env`.
 - **`/poll` says something went wrong:** give the bot's role the **Send Polls** permission, in Server Settings or in that channel's settings.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.

@@ -7,6 +7,7 @@ swap_size_mb = 512
 
 [env]
   ENV_FILE = "/data/.env"
+  CLANKER_DB_PATH = "/data/clanker.db"
   NODE_OPTIONS = "--max-old-space-size=192"
 
 [mounts]
