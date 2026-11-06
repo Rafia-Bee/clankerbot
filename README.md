@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Right now it can delete recent messages. Tickets, polls and AION 2 character lookups are on the way.
+A Discord bot for my guild server. Right now it can look up AION 2 characters and delete recent messages. Tickets and polls are on the way.
 
 ## What you need
 
@@ -40,6 +40,9 @@ To copy IDs, turn on **Developer Mode** in Discord (**User Settings → Advanced
 | `BOT_TOKEN` | Developer Portal → **Bot** → **Reset Token**. Keep it secret. |
 | `CLIENT_ID` | Developer Portal → **General Information** → **Application ID** |
 | `GUILD_ID` | Your server's ID |
+| `AION2INDEX_API_KEY` | The key for character lookups, from the [aion2index community panel](https://aion2index.com/communities/docs). You can use the same key as orcabot. See [Character lookups](#character-lookups). |
+
+Everything else in `.env.example` already has a sensible value. Copy those lines over as they are.
 
 ### 4. Register the commands and start the bot
 
@@ -117,9 +120,20 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 
 | Command | What it does | Who can use it |
 | --- | --- | --- |
+| `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
+
+## Character lookups
+
+`/whois` looks characters up on [aion2index.com](https://aion2index.com) first, and on [shugo.gg](https://shugo.gg) when aion2index doesn't answer. `LOOKUP_SOURCES` in `.env` changes the order, or picks just one site.
+
+- When a site fails, the bot uses the other one first for 5 minutes (`LOOKUP_FAILOVER_MINUTES`), then tries it again. The bot's log says when a site stops or starts working.
+- When the game itself isn't answering, aion2index only has older saved data. The bot asks shugo.gg instead, and only shows the older data if shugo.gg fails too. The reply then says how old it is.
+- The same name looked up twice within a minute gets the same answer, without asking the sites again.
+
+**Sharing the key with orcabot:** one aion2index key allows 60 lookups a minute across every bot using it. Clanker waits 4 seconds between lookups (`AION2INDEX_MIN_REQUEST_GAP_MS=4000`, 15 a minute) and orcabot waits 1.5 seconds (40 a minute), so together they stay under the limit. If the limit is hit anyway, Clanker uses shugo.gg until aion2index lets it back in.
 
 ## Testing
 
@@ -132,6 +146,9 @@ Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` sk
 - **"The application did not respond":** the bot isn't running. Start it with `npm start`, or check `fly logs` if it's on Fly.io.
 - **"I need View Channel, Read Message History and Manage Messages in this channel":** give the bot's role those permissions, in Server Settings or in that channel's settings.
 - **The bot won't start and says settings are missing:** fill those in `.env`.
+- **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
+- **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.
+- **`/whois` says a character doesn't exist, but it does:** check the spelling. Characters hidden on aion2index are still found through shugo.gg.
 - **Invalid token:** reset it in the Developer Portal and update `BOT_TOKEN`.
 
 ## License
