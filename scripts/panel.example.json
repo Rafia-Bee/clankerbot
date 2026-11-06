@@ -1,0 +1,37 @@
+{
+  "channelId": "PASTE THE CHANNEL ID FOR THE PANEL",
+  "title": "Need help?",
+  "description": "Pick the kind of ticket you want to open. **Only you and staff** can see it.",
+  "colour": "#3b82f6",
+  "image": null,
+  "types": [
+    {
+      "label": "Apply",
+      "emoji": "📝",
+      "style": "success",
+      "nameSchema": "{type}-{number}-{user}",
+      "openCategoryId": "PASTE THE OPEN CATEGORY ID",
+      "closedCategoryId": "PASTE THE CLOSED CATEGORY ID",
+      "staffRoleIds": ["PASTE A STAFF ROLE ID"],
+      "openLimit": 1,
+      "deleteAfterDays": 7,
+      "messages": [
+        { "kind": "text", "content": "{member}, thanks for applying! {staff} will be with you soon." },
+        {
+          "kind": "embed",
+          "content": "Please answer these:\n1. What's your character name?\n2. Which class do you play?\n3. How did you hear about us?"
+        }
+      ]
+    },
+    {
+      "label": "Report a problem",
+      "style": "danger",
+      "nameSchema": "report-{number}",
+      "openCategoryId": "PASTE THE OPEN CATEGORY ID",
+      "closedCategoryId": "PASTE THE CLOSED CATEGORY ID",
+      "staffRoleIds": ["PASTE A STAFF ROLE ID"],
+      "deleteAfterDays": 3,
+      "messages": [{ "kind": "text", "content": "{member}, what happened? {staff}" }]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It can also look characters up, post polls and delete recent messages. Tickets are on the way.
+A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system, and can also look characters up, post polls and delete recent messages.
 
 ## What you need
 
@@ -25,7 +25,7 @@ npm install
 3. **OAuth2 → URL Generator**: tick `bot` and `applications.commands`, then tick these permissions:
    - View Channels, Send Messages, Embed Links, Read Message History
    - Manage Messages, Send Polls
-   - Manage Roles, Manage Nicknames
+   - Manage Roles, Manage Nicknames, Manage Channels
 4. Open the link it gives you at the bottom, pick your server, and click **Authorize**.
 
 Already invited the bot without some of these? Add them to the bot's role in **Server Settings → Roles** instead.
@@ -170,6 +170,66 @@ The bot can't rename the server owner (Discord doesn't allow it), or anyone whos
 
 A character that's already linked to someone else is refused. The reply says who has it, so you can `/unverify` them first. If the game isn't answering and only older saved data is available, the bot uses it and says so.
 
+## Tickets
+
+Members open a private ticket channel by clicking a button on a ticket panel. A panel can have up to 25 buttons, each a different kind of ticket (like "Apply" or "Report a problem"), with its own staff roles, categories and opening messages.
+
+### Setting up the categories
+
+Each ticket type uses two categories: one for **open** tickets and one for **closed** tickets. Types can share them. Make the categories visible to staff only. The bot gives each ticket channel its own permissions anyway, so members only ever see their own tickets.
+
+A category holds at most 50 channels (Discord's limit). If the open category is full, members are told tickets are full and to message a staff member.
+
+### Posting a panel
+
+A setup wizard (`/ticket-setup`) is on the way. Until then, panels are made from a settings file:
+
+1. Copy `scripts/panel.example.json` to `data/panel.json`. The `data` folder isn't uploaded to GitHub.
+2. Fill in the IDs: the channel for the panel, the two categories for each ticket type, and the staff roles. Change the text and buttons to what you want.
+3. Run `node scripts/create-panel.js data/panel.json` (or `cpanel data/panel.json`). If something's wrong in the file, it lists every problem. Otherwise the panel appears in the channel.
+
+The settings in the file:
+
+| Setting | What it is |
+| --- | --- |
+| `channelId` | The channel the panel is posted in |
+| `title`, `description` | The panel's text. The description can use Discord formatting (`**bold**`, `*italic*`, `> quote`, lists, links). Type `\n` for a new line. |
+| `colour` | *(optional)* The colour of the panel's side bar, like `#3b82f6` |
+| `image` | *(optional)* A link to a picture shown in the panel |
+| `types` | The buttons, 1 to 25. Each one has the settings below. |
+| `label` | The button text |
+| `emoji` | *(optional)* An emoji on the button |
+| `style` | *(optional)* The button colour: `primary` (blue, the default), `secondary` (grey), `success` (green) or `danger` (red) |
+| `nameSchema` | *(optional)* How ticket channels are named. `{type}` is the button text in lowercase, `{number}` counts up per type (`0001`), `{user}` is the member's username, `{name}` is their name in the server. Default: `{type}-{number}`. |
+| `openCategoryId`, `closedCategoryId` | The two categories |
+| `staffRoleIds` | The roles that handle this type of ticket, at least one, like `["111", "222"]` |
+| `openLimit` | *(optional)* How many tickets of this type a member can have open at once. Default 1. |
+| `deleteAfterDays` | *(optional)* Closed tickets are deleted after this many days. `0` means never. Default 7. |
+| `messages` | *(optional)* Up to 5 messages posted when the ticket opens, in order. Each is `{ "kind": "text", "content": "..." }` or `"kind": "embed"` (a box with the panel's colour). `{member}` pings the member, `{staff}` pings the staff roles, `{type}` is the button text. Pings only work in `text` messages. Put any questions you want the member to answer here. |
+
+On Fly.io, upload the file and run the script there:
+
+```bash
+fly ssh sftp put data/panel.json /data/panel.json
+fly ssh console -C "node scripts/create-panel.js /data/panel.json"
+```
+
+### How tickets work
+
+1. A member clicks a button. The bot creates a channel in that type's open category, that only the member, the type's staff roles and the bot can see. Administrators can see every channel anyway.
+2. The bot posts the opening messages. The last one has the ticket buttons.
+3. Staff and the member talk it through in the channel.
+
+| Button | Who can use it | What it does |
+| --- | --- | --- |
+| **Close** | Staff, or the member who opened it | After an "Are you sure?", moves the ticket to the closed category. The member can still read it but can't type. The countdown to auto-delete starts. |
+| **Reopen** | Staff | Moves a closed ticket back to the open category and lets the member type again |
+| **Delete** | Staff | After an "Are you sure?", deletes the channel straight away. There's no copy of the chat afterwards. |
+
+Staff means the ticket type's staff roles, plus anyone with Administrator.
+
+Once an hour, the bot deletes closed tickets older than their type's `deleteAfterDays`. It only ever deletes ticket channels it made itself.
+
 ## Polls
 
 `/poll` posts a normal Discord poll, so voting and results work like any poll in Discord.
@@ -207,6 +267,9 @@ As with any Discord poll, anyone can see who voted for what.
 - **The bot won't start and says settings are missing:** fill those in `.env`.
 - **Verify says "I couldn't update everything on your profile":** drag the bot's role above the Guild, Trusted and Guest roles (setup step 4), and check it has Manage Roles and Manage Nicknames. The bot's log says which part failed. The server owner can never be renamed by a bot.
 - **"Problem with the verification settings":** fill in `GUILD_ROLE_ID`, `TRUSTED_ROLE_ID` and `GUEST_ROLE_ID` in `.env`.
+- **Clicking a ticket button says something went wrong:** check the bot has **Manage Channels** and **Manage Roles**, and that it can see the ticket categories. The bot's log has the details.
+- **"The ticket category is missing":** a category in the panel's settings was deleted, or the ID is wrong. Fix the file and post the panel again.
+- **A ticket didn't move when closed or reopened:** the reply says why (the category is missing or full). The ticket still works where it is.
 - **`/poll` says something went wrong:** give the bot's role the **Send Polls** permission, in Server Settings or in that channel's settings.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.

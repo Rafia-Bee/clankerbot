@@ -1,5 +1,5 @@
-// The bot's database: which character each verified member linked.
-//   openStore                   opens (or creates) the database file and returns the functions below
+// The bot's database: which character each verified member linked, plus the ticket tables from tickets/store.js.
+//   openStore                   opens (or creates) the database file and returns the functions below and the ticket ones
 //   getVerification             a member's saved character
 //   findClaimOwner              which member a character is linked to, by character ID or confirmed name
 //   saveVerification            links a character to a member, replacing their old one; false if someone else has it
@@ -11,6 +11,7 @@
 const fs = require("fs");
 const path = require("path");
 const Database = require("better-sqlite3");
+const { TICKET_SCHEMA, createTicketStore } = require("./tickets/store");
 
 const DEFAULT_DB_PATH = path.join(__dirname, "..", "data", "clanker.db");
 
@@ -41,7 +42,9 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
   if (dbPath !== ":memory:") fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  db.exec(TICKET_SCHEMA);
 
   const statements = {
     get: db.prepare("SELECT * FROM verifications WHERE discord_id = ?"),
@@ -96,6 +99,7 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
   });
 
   return {
+    ...createTicketStore(db),
     getVerification: (discordId) => statements.get.get(discordId),
     findClaimOwner,
     saveVerification(row) {

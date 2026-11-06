@@ -1,4 +1,5 @@
 // Starts Clanker: checks the settings, loads the slash commands, logs in to Discord and runs commands, buttons and pop-ups.
+// Also starts the hourly ticket cleanup and marks tickets deleted when their channel is deleted by hand.
 //   checkSettings      stops the bot with a clear message when a setting is missing or wrong
 //   loadCommands       reads every command file in src/commands, and which buttons each one handles
 //   replyWithError     tells the person something failed, whether or not it already replied
@@ -12,6 +13,8 @@ const { getLookupConfig } = require("./lookup/config");
 const { lookupEvents } = require("./lookup/lookup");
 const { getVerifyConfig } = require("./verify/config");
 const { getStore } = require("./store");
+const { handleTicketComponent } = require("./tickets/interactions");
+const { startTicketCleanup } = require("./tickets/cleanup");
 
 function checkSettings() {
   const missing = missingSettings(process.env, ["BOT_TOKEN"]);
@@ -77,9 +80,15 @@ async function replyWithError(interaction) {
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const { commands, componentHandlers } = loadCommands();
+componentHandlers.set("ticket", handleTicketComponent);
 
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
+  startTicketCleanup(client);
+});
+
+client.on("channelDelete", (channel) => {
+  getStore().markChannelDeleted(channel.id);
 });
 
 client.on("error", (error) => {
