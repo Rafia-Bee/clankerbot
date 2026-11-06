@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system, and can also look characters up, post polls and delete recent messages.
+A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system and "Create a VC" voice hubs, and can also look characters up, post polls and delete recent messages.
 
 ## What you need
 
@@ -26,6 +26,7 @@ npm install
    - View Channels, Send Messages, Embed Links, Read Message History
    - Manage Messages, Send Polls
    - Manage Roles, Manage Nicknames, Manage Channels
+   - Connect, Speak, Move Members (for [voice hubs](#voice-hubs))
 4. Open the link it gives you at the bottom, pick your server, and click **Authorize**.
 
 Already invited the bot without some of these? Add them to the bot's role in **Server Settings → Roles** instead.
@@ -67,6 +68,10 @@ The first line tells Discord which slash commands the bot has. Run it again when
 ### 6. Post the Verify button
 
 Run `/verify-setup` in the channel where new members should verify. See [Verification](#verification).
+
+### 7. Make a voice hub (optional)
+
+Run `/hub-setup` in a text channel inside the category where the voice channels should go. See [Voice hubs](#voice-hubs).
 
 ## Hosting on Fly.io
 
@@ -137,6 +142,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | --- | --- | --- |
 | `/ticket-setup` | Make a ticket panel step by step. See [Tickets](#tickets). | Manage Server |
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
+| `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
@@ -255,6 +261,25 @@ Staff means the ticket type's staff roles, plus anyone with Administrator.
 
 Once an hour, the bot deletes closed tickets older than their type's `deleteAfterDays`. It only ever deletes ticket channels it made itself.
 
+## Voice hubs
+
+A hub is a voice channel, usually called "Create a VC". When someone joins it, the bot makes them their own voice channel named after their server nickname (like "KFC's VC") and moves them into it.
+
+### Making a hub
+
+Run `/hub-setup` (Manage Server) in a text channel. The bot makes a "Create a VC" voice channel in the same category. To use a voice channel you already have, pick it in the `channel` option instead. You can have more than one hub, and you can rename or move the hub channel like any other.
+
+To turn a hub off, delete its channel.
+
+### How it works
+
+- The new channel goes in the same category as the hub and gets the same permissions. So if only members can see the hub, only members can see their channels too.
+- The person it's made for (the owner) can change their channel's settings: rename it, set a user limit, lock it to some people (in its **Permissions**), or disconnect people from it. They can't change anything else in the server.
+- If the owner already has a channel and joins the hub again, the bot just moves them back to it.
+- Once nobody has been in a channel for 10 seconds, the bot deletes it. If someone joins within those 10 seconds, it stays. When the owner leaves but others are still in it, it stays until everyone has left.
+- If the bot was off for a while, it catches up when it starts: empty channels are deleted and anyone waiting in a hub gets their channel.
+- The bot only ever deletes voice channels it made from a hub.
+
 ## Polls
 
 `/poll` posts a normal Discord poll, so voting and results work like any poll in Discord.
@@ -295,6 +320,9 @@ As with any Discord poll, anyone can see who voted for what.
 - **Clicking a ticket button says something went wrong:** check the bot has **Manage Channels** and **Manage Roles**, and that it can see the ticket categories. The bot's log has the details.
 - **"The ticket category is missing":** a category in the panel's settings was deleted, or the ID is wrong. Fix the file and post the panel again.
 - **A ticket didn't move when closed or reopened:** the reply says why (the category is missing or full). The ticket still works where it is.
+- **`/hub-setup` says "I need View Channels, Connect, ...":** add those permissions to the bot's role in **Server Settings → Roles**.
+- **Joining the hub does nothing:** the bot's log says why. Usually the bot can't see or connect to the hub's category, or the category is full (50 channels at most). If the hub's own permissions allow something the bot's role doesn't have, Discord won't let the bot copy them: give the bot's role that permission too, or remove it from the hub.
+- **Joining the hub makes a channel, but doesn't move me into it:** give the bot's role **Move Members** and **Connect**.
 - **`/poll` says something went wrong:** give the bot's role the **Send Polls** permission, in Server Settings or in that channel's settings.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.

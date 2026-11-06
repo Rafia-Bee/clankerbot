@@ -1,5 +1,6 @@
 // Starts Clanker: checks the settings, loads the slash commands, logs in to Discord and runs commands, buttons and pop-ups.
 // Also starts the hourly ticket cleanup and marks tickets deleted when their channel is deleted by hand.
+// Runs the voice hubs: members who join one get their own voice channel (see voice/hub.js).
 //   checkSettings      stops the bot with a clear message when a setting is missing or wrong
 //   loadCommands       reads every command file in src/commands, and which buttons each one handles
 //   replyWithError     tells the person something failed, whether or not it already replied
@@ -15,6 +16,7 @@ const { getVerifyConfig } = require("./verify/config");
 const { getStore } = require("./store");
 const { handleTicketComponent } = require("./tickets/interactions");
 const { startTicketCleanup } = require("./tickets/cleanup");
+const { createVoiceHubs } = require("./voice/hub");
 
 function checkSettings() {
   const missing = missingSettings(process.env, ["BOT_TOKEN"]);
@@ -78,17 +80,24 @@ async function replyWithError(interaction) {
   }
 }
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 const { commands, componentHandlers } = loadCommands();
 componentHandlers.set("ticket", handleTicketComponent);
+const voiceHubs = createVoiceHubs(client);
 
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
   startTicketCleanup(client);
+  voiceHubs.checkOnStartup().catch((error) => console.error("Voice hub startup check failed:", error));
 });
 
 client.on("channelDelete", (channel) => {
   getStore().markChannelDeleted(channel.id);
+  voiceHubs.forgetChannel(channel.id);
+});
+
+client.on("voiceStateUpdate", (oldState, newState) => {
+  voiceHubs.handleVoiceUpdate(oldState, newState).catch((error) => console.error("Voice update failed:", error));
 });
 
 client.on("error", (error) => {
