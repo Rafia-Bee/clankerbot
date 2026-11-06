@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system and "Create a VC" voice hubs, and can also look characters up, post polls and delete recent messages.
+A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system, "Create a VC" voice hubs and role buttons, and can also look characters up, post polls and delete recent messages.
 
 ## What you need
 
@@ -143,6 +143,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-setup` | Make a ticket panel step by step. See [Tickets](#tickets). | Manage Server |
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
+| `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
@@ -280,6 +281,24 @@ To turn a hub off, delete its channel.
 - If the bot was off for a while, it catches up when it starts: empty channels are deleted and anyone waiting in a hub gets their channel.
 - The bot only ever deletes voice channels it made from a hub.
 
+## Role buttons
+
+`/role-picker-setup` (Manage Roles) posts a message with one button in the channel you run it in. A member who clicks it gets the role. Clicking it again takes the role away. Only they see the reply.
+
+- **role:** the role the button gives.
+- **message** *(optional)*: the text above the button. Discord formatting works, and `\n` makes a new line. Leave it empty for "Click the button to get the role. Click it again to remove it."
+- **button** *(optional)*: the button text. Leave it empty to use the role's name.
+
+Want buttons for a few roles? Run the command once for each role. The box next to the message takes the role's colour.
+
+Some roles can't go on a button, and the bot tells you why:
+
+- @everyone, and roles that belong to a bot or integration.
+- Roles above or level with the bot's role. Drag the bot's role above them in **Server Settings → Roles**.
+- Roles above or level with your own top role, so nobody can hand out a role higher than theirs. The server owner can pick any role.
+
+The buttons keep working after the bot restarts. To remove one, delete its message. If the role is deleted, the button tells members to contact a mod.
+
 ## Polls
 
 `/poll` posts a normal Discord poll, so voting and results work like any poll in Discord.
@@ -323,6 +342,7 @@ As with any Discord poll, anyone can see who voted for what.
 - **`/hub-setup` says "I need View Channels, Connect, ...":** add those permissions to the bot's role in **Server Settings → Roles**.
 - **Joining the hub does nothing:** the bot's log says why. Usually the bot can't see or connect to the hub's category, or the category is full (50 channels at most). If the hub's own permissions allow something the bot's role doesn't have, Discord won't let the bot copy them: give the bot's role that permission too, or remove it from the hub.
 - **Joining the hub makes a channel, but doesn't move me into it:** give the bot's role **Move Members** and **Connect**.
+- **A role button says "I can't give out that role right now":** the role was moved above the bot's role, or the bot lost **Manage Roles**. Drag the bot's role back above it. The bot's log says which.
 - **`/poll` says something went wrong:** give the bot's role the **Send Polls** permission, in Server Settings or in that channel's settings.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.
