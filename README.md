@@ -81,9 +81,9 @@ Fly.io keeps the bot running around the clock for a couple of dollars a month (t
    - Then: `fly auth login`
 3. **Create the app** from the project folder:
    ```bash
-   fly apps create clanker
+   fly apps create clankerbot
    ```
-   If the name `clanker` is taken, pick another one (like `clanker-bot`) and change `app = "clanker"` at the top of `fly.toml` to match.
+   If the name `clankerbot` is taken, pick another one and change `app = "clankerbot"` at the top of `fly.toml` to match.
 4. **Create the storage** (say yes if it warns about having only one volume):
    ```bash
    fly volumes create clanker_data --region fra --size 1
@@ -119,14 +119,14 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 
 - **Update the bot after a change:** run `fly deploy`, or start the deploy from GitHub's **Actions** tab
 - **See what the bot is doing:** `fly logs`
-- **Restart it:** `fly apps restart clanker`
+- **Restart it:** `fly apps restart clankerbot`
 - **Change a setting:** download the live settings, edit them, and put them back:
   ```bash
   fly ssh sftp get /data/.env server.env
   # edit server.env
   fly ssh console -C "rm /data/.env"
   fly ssh sftp put server.env /data/.env -m 0600
-  fly apps restart clanker
+  fly apps restart clankerbot
   ```
   Delete `server.env` from your PC afterwards, since it contains the bot token.
 - **New or changed commands:** run `node deploy-commands.js` from your PC.
