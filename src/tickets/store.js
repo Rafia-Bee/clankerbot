@@ -1,10 +1,15 @@
 // The ticket tables in the bot's database: panels, ticket types with their staff roles and messages, and tickets.
 //   TICKET_SCHEMA      the tables, created on startup if they don't exist yet
+//   addMissingColumns  adds columns that older databases don't have yet, keeping their data
 //   createTicketStore  the ticket functions below, for an open database
 //   createPanel        saves a panel and its types in one go, returning their IDs
+//   updatePanel        saves an edited panel: keeps types by ID, adds new ones, retires removed ones
 //   setPanelMessage    saves the ID of the posted panel message
-//   deletePanel        removes a panel and its types (used when posting it failed)
-//   getPanel           a panel with its types in order
+//   setPanelLocation   saves the channel and message ID of the posted panel
+//   deletePanel        removes a panel and its types for good (used when posting it failed)
+//   markPanelDeleted   marks a panel deleted, keeping its types so open tickets still work
+//   getPanel           a panel with its current types in order
+//   listPanels         a server's panels that aren't deleted, with their current types
 //   getType            a ticket type with its panel colour, staff roles and opening messages
 //   nextTicketNumber   counts up the type's ticket number and returns the new one
 //   createTicket       saves a new open ticket
@@ -30,7 +35,8 @@ CREATE TABLE IF NOT EXISTS ticket_panels (
   description      TEXT NOT NULL,
   colour           INTEGER NOT NULL,
   image            TEXT,
-  created_at       INTEGER NOT NULL
+  created_at       INTEGER NOT NULL,
+  deleted_at       INTEGER
 );
 CREATE TABLE IF NOT EXISTS ticket_types (
   id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +51,8 @@ CREATE TABLE IF NOT EXISTS ticket_types (
   closed_category_id  TEXT NOT NULL,
   open_limit          INTEGER NOT NULL,
   delete_after_days   INTEGER NOT NULL,
-  counter             INTEGER NOT NULL DEFAULT 0
+  counter             INTEGER NOT NULL DEFAULT 0,
+  removed             INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS ticket_type_roles (
   type_id          INTEGER NOT NULL REFERENCES ticket_types (id) ON DELETE CASCADE,
@@ -84,7 +91,20 @@ CREATE TABLE IF NOT EXISTS setup_drafts (
 );
 `;
 
+const ADDED_COLUMNS = [
+  ["ticket_panels", "deleted_at", "INTEGER"],
+  ["ticket_types", "removed", "INTEGER NOT NULL DEFAULT 0"],
+];
+
+function addMissingColumns(db) {
+  for (const [table, column, definition] of ADDED_COLUMNS) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((row) => row.name);
+    if (!columns.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 function createTicketStore(db) {
+  addMissingColumns(db);
   const s = {
     insertPanel: db.prepare(`
       INSERT INTO ticket_panels (guild_id, channel_id, title, description, colour, image, created_at)
@@ -101,11 +121,27 @@ function createTicketStore(db) {
       "INSERT INTO ticket_type_messages (type_id, position, kind, content) VALUES (?, ?, ?, ?)"
     ),
     setPanelMessage: db.prepare("UPDATE ticket_panels SET message_id = ? WHERE id = ?"),
+    setPanelLocation: db.prepare("UPDATE ticket_panels SET channel_id = ?, message_id = ? WHERE id = ?"),
     deletePanel: db.prepare("DELETE FROM ticket_panels WHERE id = ?"),
+    markPanelDeleted: db.prepare("UPDATE ticket_panels SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL"),
     getPanel: db.prepare("SELECT * FROM ticket_panels WHERE id = ?"),
-    typesOfPanel: db.prepare("SELECT * FROM ticket_types WHERE panel_id = ? ORDER BY position"),
+    listPanels: db.prepare("SELECT * FROM ticket_panels WHERE guild_id = ? AND deleted_at IS NULL ORDER BY id"),
+    typesOfPanel: db.prepare("SELECT * FROM ticket_types WHERE panel_id = ? AND removed = 0 ORDER BY position"),
+    updatePanelRow: db.prepare(`
+      UPDATE ticket_panels SET channel_id = @channelId, title = @title, description = @description,
+        colour = @colour, image = @image WHERE id = @panelId
+    `),
+    updateType: db.prepare(`
+      UPDATE ticket_types SET position = @position, label = @label, slug = @slug, emoji = @emoji, style = @style,
+        name_schema = @nameSchema, open_category_id = @openCategoryId, closed_category_id = @closedCategoryId,
+        open_limit = @openLimit, delete_after_days = @deleteAfterDays, removed = 0
+      WHERE id = @id AND panel_id = @panelId
+    `),
+    retireType: db.prepare("UPDATE ticket_types SET removed = 1 WHERE id = ?"),
+    clearRoles: db.prepare("DELETE FROM ticket_type_roles WHERE type_id = ?"),
+    clearMessages: db.prepare("DELETE FROM ticket_type_messages WHERE type_id = ?"),
     getType: db.prepare(`
-      SELECT t.*, p.colour AS panel_colour FROM ticket_types t
+      SELECT t.*, p.colour AS panel_colour, p.deleted_at AS panel_deleted_at FROM ticket_types t
       JOIN ticket_panels p ON p.id = t.panel_id WHERE t.id = ?
     `),
     rolesOfType: db.prepare("SELECT role_id FROM ticket_type_roles WHERE type_id = ? ORDER BY rowid"),
@@ -159,23 +195,55 @@ function createTicketStore(db) {
         now,
       }).lastInsertRowid
     );
-    const typeIds = panel.types.map((type, position) => {
-      const typeId = Number(s.insertType.run({ ...type, emoji: type.emoji ?? null, panelId, position }).lastInsertRowid);
-      for (const roleId of type.staffRoleIds) s.insertRole.run(typeId, roleId);
-      type.messages.forEach((message, i) => s.insertMessage.run(typeId, i, message.kind, message.content));
-      return typeId;
-    });
+    const typeIds = panel.types.map((type, position) => insertType(type, panelId, position));
     return { panelId, typeIds };
   });
 
+  function saveRolesAndMessages(typeId, type) {
+    for (const roleId of type.staffRoleIds) s.insertRole.run(typeId, roleId);
+    type.messages.forEach((message, i) => s.insertMessage.run(typeId, i, message.kind, message.content));
+  }
+
+  function insertType(type, panelId, position) {
+    const { id, ...fields } = type;
+    const typeId = Number(s.insertType.run({ ...fields, emoji: type.emoji ?? null, panelId, position }).lastInsertRowid);
+    saveRolesAndMessages(typeId, type);
+    return typeId;
+  }
+
+  const updatePanel = db.transaction((panelId, panel) => {
+    s.updatePanelRow.run({
+      panelId,
+      channelId: panel.channelId,
+      title: panel.title,
+      description: panel.description ?? "",
+      colour: panel.colour,
+      image: panel.image ?? null,
+    });
+    const current = new Set(s.typesOfPanel.all(panelId).map((row) => row.id));
+    const typeIds = panel.types.map((type, position) => {
+      if (!current.has(type.id)) return insertType(type, panelId, position);
+      s.updateType.run({ ...type, emoji: type.emoji ?? null, panelId, position });
+      s.clearRoles.run(type.id);
+      s.clearMessages.run(type.id);
+      saveRolesAndMessages(type.id, type);
+      return type.id;
+    });
+    for (const id of current) if (!typeIds.includes(id)) s.retireType.run(id);
+    return { typeIds };
+  });
+
+  const withTypes = (panel) => panel && { ...panel, types: s.typesOfPanel.all(panel.id) };
+
   return {
     createPanel,
+    updatePanel,
     setPanelMessage: (panelId, messageId) => s.setPanelMessage.run(messageId, panelId),
+    setPanelLocation: (panelId, channelId, messageId) => s.setPanelLocation.run(channelId, messageId, panelId),
     deletePanel: (panelId) => s.deletePanel.run(panelId),
-    getPanel(panelId) {
-      const panel = s.getPanel.get(panelId);
-      return panel && { ...panel, types: s.typesOfPanel.all(panelId) };
-    },
+    markPanelDeleted: (panelId) => s.markPanelDeleted.run(Date.now(), panelId).changes > 0,
+    getPanel: (panelId) => withTypes(s.getPanel.get(panelId)),
+    listPanels: (guildId) => s.listPanels.all(guildId).map(withTypes),
     getType(typeId) {
       const type = s.getType.get(typeId);
       if (!type) return undefined;

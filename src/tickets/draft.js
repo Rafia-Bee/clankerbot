@@ -1,6 +1,7 @@
 // The /ticket-setup draft: a panel's settings being filled in from the wizard's pop-ups, in the same shape as a panel file.
 // Every function returns a new draft and leaves the one it was given unchanged.
 //   emptyDraft         a new draft that posts in the given channel
+//   panelToDraft       a published panel turned back into a draft for editing, keeping its type IDs
 //   readWholeNumber    reads a typed number, keeping the text as typed when it isn't a whole number
 //   newType            a ticket type with defaults, copying the previous type's categories and staff roles
 //   applyPanelText     saves the Panel text pop-up
@@ -18,6 +19,30 @@ const copy = (draft) => JSON.parse(JSON.stringify(draft));
 
 function emptyDraft(channelId) {
   return { channelId, title: "", description: "", colour: null, image: null, types: [] };
+}
+
+function panelToDraft(panel, types) {
+  return {
+    editingPanelId: panel.id,
+    channelId: panel.channel_id,
+    title: panel.title,
+    description: panel.description,
+    colour: `#${panel.colour.toString(16).padStart(6, "0")}`,
+    image: panel.image,
+    types: types.map((type) => ({
+      id: type.id,
+      label: type.label,
+      emoji: type.emoji,
+      style: type.style,
+      nameSchema: type.name_schema,
+      openCategoryId: type.open_category_id,
+      closedCategoryId: type.closed_category_id,
+      staffRoleIds: [...type.staffRoleIds],
+      openLimit: type.open_limit,
+      deleteAfterDays: type.delete_after_days,
+      messages: type.messages.map(({ kind, content }) => ({ kind, content })),
+    })),
+  };
 }
 
 function readWholeNumber(text) {
@@ -131,6 +156,7 @@ function draftProblems(draft) {
 
 module.exports = {
   emptyDraft,
+  panelToDraft,
   applyPanelText,
   applyTypeBasics,
   applyTypeWhere,

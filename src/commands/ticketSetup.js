@@ -2,7 +2,9 @@
 //   optional       reads a pop-up field, or gives a fallback when the field was left out
 //   liveProblems   checks the draft against the server: channels and categories still there, the bot can post
 //   save           saves the draft and shows a screen
-//   publish        posts the panel and ends the setup
+//   deliverEdit    updates the posted panel message in place, or posts a new one if the channel changed or it's gone
+//   saveEdits      saves an edited panel; if updating the message fails, the draft is refreshed so Save can be retried
+//   publish        posts the panel (or saves the edits) and ends the setup
 //   handleAction   does what a setup button, dropdown or pop-up asked for
 //   execute        starts a new setup, or picks up an unfinished one
 
@@ -18,7 +20,8 @@ const {
   moveType,
   draftProblems,
 } = require("../tickets/draft");
-const { publishPanel } = require("../tickets/publish");
+const { publishPanel, savePanelEdits } = require("../tickets/publish");
+const { panelToDraft } = require("../tickets/draft");
 const {
   mainView,
   typeView,
@@ -34,6 +37,7 @@ const POST_PERMISSIONS = [
   PermissionFlagsBits.ViewChannel,
   PermissionFlagsBits.SendMessages,
   PermissionFlagsBits.EmbedLinks,
+  PermissionFlagsBits.ReadMessageHistory,
 ];
 const ENDED = { content: "This setup has ended. Run /ticket-setup to start a new one.", embeds: [], components: [] };
 
@@ -51,7 +55,9 @@ function liveProblems(guild, draft) {
   if (!channel?.isTextBased()) {
     problems.push("The panel's channel was deleted. Pick another one (Panel text).");
   } else if (!channel.permissionsFor(guild.members.me)?.has(POST_PERMISSIONS)) {
-    problems.push(`I can't post in ${channel}. I need View Channel, Send Messages and Embed Links there.`);
+    problems.push(
+      `I can't post in ${channel}. I need View Channel, Send Messages, Embed Links and Read Message History there.`
+    );
   }
   draft.types.forEach((type, i) => {
     const name = type.label || `Ticket type ${i + 1}`;
@@ -72,6 +78,55 @@ function save(interaction, draft, view) {
   return interaction.update(view);
 }
 
+async function deliverEdit(guild, before, message, channel) {
+  if (before.channel_id === channel.id && before.message_id) {
+    const existing = await channel.messages.fetch(before.message_id).catch(() => null);
+    if (existing) {
+      await existing.edit(message);
+      return { channelId: channel.id, messageId: existing.id };
+    }
+  }
+  const posted = await channel.send(message);
+  if (before.message_id && before.channel_id !== channel.id) {
+    const oldChannel = guild.channels.cache.get(before.channel_id);
+    await oldChannel?.messages.delete(before.message_id).catch(() => {});
+  }
+  return { channelId: channel.id, messageId: posted.id };
+}
+
+async function saveEdits(interaction, draft, channel) {
+  const store = getStore();
+  const panelId = draft.editingPanelId;
+  const before = store.getPanel(panelId);
+  try {
+    const result = await savePanelEdits({
+      store,
+      config: draft,
+      panelId,
+      deliver: (message) => deliverEdit(interaction.guild, before, message, channel),
+    });
+    if (result.errors.length) {
+      return interaction.editReply(mainView(draft, { note: `Can't save yet:\n- ${result.errors.join("\n- ")}` }));
+    }
+    store.deleteDraft(interaction.user.id, interaction.guildId);
+    return interaction.editReply({
+      content: `Saved the changes to **${draft.title}**. The panel in ${channel} is up to date.`,
+      embeds: [],
+      components: [],
+    });
+  } catch (error) {
+    console.warn(`Saving ticket panel ${panelId} failed: ${error.message}`);
+    const saved = store.getPanel(panelId);
+    const refreshed = panelToDraft(saved, saved.types.map((type) => store.getType(type.id)));
+    store.saveDraft(interaction.user.id, interaction.guildId, refreshed);
+    return interaction.editReply(
+      mainView(refreshed, {
+        note: `The changes are saved, but I couldn't update the panel message: ${error.message}. Press Save changes to try again.`,
+      })
+    );
+  }
+}
+
 async function publish(interaction, draft) {
   const store = getStore();
   const problems = draftProblems(draft);
@@ -82,6 +137,7 @@ async function publish(interaction, draft) {
   }
 
   await interaction.deferUpdate();
+  if (draft.editingPanelId) return saveEdits(interaction, draft, live.channel);
   try {
     const result = await publishPanel({
       store,
@@ -169,7 +225,11 @@ async function handleAction(interaction, draft, action, index) {
       return publish(interaction, draft);
     case "cancel":
       getStore().deleteDraft(interaction.user.id, interaction.guildId);
-      return interaction.update({ content: "Setup cancelled. Nothing was posted.", embeds: [], components: [] });
+      return interaction.update({
+        content: draft.editingPanelId ? "Editing cancelled. The panel wasn't changed." : "Setup cancelled. Nothing was posted.",
+        embeds: [],
+        components: [],
+      });
   }
 }
 

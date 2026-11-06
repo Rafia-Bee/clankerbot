@@ -136,6 +136,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | Command | What it does | Who can use it |
 | --- | --- | --- |
 | `/ticket-setup` | Make a ticket panel step by step. See [Tickets](#tickets). | Manage Server |
+| `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
@@ -194,6 +195,15 @@ Run `/ticket-setup` (Manage Server). A setup screen opens that only you can see.
 4. **Publish** lights up once nothing is missing. It posts the panel, and members can open tickets straight away.
 
 Your setup is saved as you go. If you close it or the bot restarts, run `/ticket-setup` again to pick up where you left off. **Cancel** throws the setup away.
+
+### Changing or deleting a panel with /ticket-panels
+
+Run `/ticket-panels` (Manage Server). It lists every panel with a link to it, and how full each ticket type's categories are (like "Apply: open 12 of 50, closed 3 of 50"), so you can spot a category filling up. Pick a panel from the dropdown, then:
+
+- **Edit:** opens the panel in the `/ticket-setup` screen. Change what you like and press **Save changes**. The posted panel is updated in place. If you picked a different channel, or the panel message was deleted, the bot posts a new one (and removes the old one).
+  - Removing a ticket type takes its button off the panel. Tickets of that type that are already open keep working.
+  - You can only have one setup going at a time. If you have an unfinished `/ticket-setup`, finish or cancel it first.
+- **Delete:** after an "Are you sure?", removes the panel message, and nobody can open new tickets from it. Tickets that are already open keep working, and closed ones are still deleted after their days.
 
 ### Making a panel from a settings file
 

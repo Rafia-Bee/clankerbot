@@ -23,7 +23,7 @@ const { getStore } = require("../store");
 const { ticketId, parseTicketId } = require("./ids");
 const { channelName } = require("./naming");
 const { buildOpeningMessages } = require("./messages");
-const { canUse, transitionError, memberAccess, isCategoryFull } = require("./rules");
+const { canOpen, canUse, transitionError, memberAccess, isCategoryFull } = require("./rules");
 
 const STAFF_ALLOW = ["ViewChannel", "ReadMessageHistory", "SendMessages", "AddReactions", "AttachFiles", "EmbedLinks"];
 const BOT_ALLOW = ["ViewChannel", "ReadMessageHistory", "SendMessages", "EmbedLinks", "ManageChannels"];
@@ -72,7 +72,7 @@ async function openTicket(interaction, panelId, typeId) {
   const store = getStore();
   const { guild, user, member } = interaction;
   const type = store.getType(typeId);
-  if (!type || type.panel_id !== panelId) {
+  if (!canOpen(type) || type.panel_id !== panelId) {
     return interaction.editReply("This ticket button doesn't work any more. Please tell a staff member.");
   }
 

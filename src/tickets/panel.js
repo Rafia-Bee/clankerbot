@@ -71,6 +71,7 @@ function checkType(type, index, errors) {
   }
 
   return {
+    ...(Number.isInteger(t.id) ? { id: t.id } : {}),
     label: typeof t.label === "string" ? t.label.trim() : t.label,
     slug: slugify(String(t.label ?? "")) || "ticket",
     emoji: t.emoji || null,

@@ -92,8 +92,9 @@ function problemLines(problems) {
   return shown.join("\n");
 }
 
-function header(note) {
-  return note ? `**Ticket panel setup**\n${note}` : "**Ticket panel setup**";
+function header(draft, note) {
+  const title = draft.editingPanelId ? `**Editing ticket panel #${draft.editingPanelId}**` : "**Ticket panel setup**";
+  return note ? `${title}\n${note}` : title;
 }
 
 function mainView(draft, { note } = {}) {
@@ -118,7 +119,7 @@ function mainView(draft, { note } = {}) {
       .setDisabled(draft.types.length >= MAX_TYPES),
     new ButtonBuilder()
       .setCustomId(id("publish"))
-      .setLabel("Publish")
+      .setLabel(draft.editingPanelId ? "Save changes" : "Publish")
       .setStyle(ButtonStyle.Success)
       .setDisabled(problems.length > 0),
     new ButtonBuilder().setCustomId(id("cancel")).setLabel("Cancel").setStyle(ButtonStyle.Danger)
@@ -131,7 +132,7 @@ function mainView(draft, { note } = {}) {
       .addOptions(draft.types.map((type, i) => ({ label: short(`${i + 1}. ${typeName(type, i)}`, 100), value: String(i) })));
     components.push(new ActionRowBuilder().addComponents(select));
   }
-  return { content: header(note), embeds: [previewEmbed(draft), summary], components };
+  return { content: header(draft, note), embeds: [previewEmbed(draft), summary], components };
 }
 
 function typeView(draft, index, { note } = {}) {
@@ -156,7 +157,7 @@ function typeView(draft, index, { note } = {}) {
   const button = (action, text, style, disabled = false) =>
     new ButtonBuilder().setCustomId(id(action, index)).setLabel(text).setStyle(style).setDisabled(disabled);
   return {
-    content: header(note),
+    content: header(draft, note),
     embeds: [new EmbedBuilder().setTitle(short(name, 256)).setDescription(lines.join("\n"))],
     components: [
       new ActionRowBuilder().addComponents(

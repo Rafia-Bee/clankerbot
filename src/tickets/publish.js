@@ -1,5 +1,6 @@
-// Publishes a ticket panel: checks its settings, saves it, posts it and saves the message ID. Used by the wizard and the script.
-//   publishPanel  returns the problems if the settings are wrong; undoes the save if posting fails
+// Publishes ticket panels and saves edits to them. Used by the wizard, /ticket-panels and the script.
+//   publishPanel    checks, saves and posts a new panel; undoes the save if posting fails
+//   savePanelEdits  checks and saves an edited panel, then updates (or reposts) its message
 
 const { checkPanelConfig, buildPanelMessage } = require("./panel");
 
@@ -19,4 +20,17 @@ async function publishPanel({ store, config, guildId, post }) {
   return { errors: [], panelId, panel };
 }
 
-module.exports = { publishPanel };
+async function savePanelEdits({ store, config, panelId, deliver }) {
+  const current = store.getPanel(panelId);
+  if (!current || current.deleted_at) return { errors: ["This panel was deleted, so it can't be edited."] };
+  const { errors, panel } = checkPanelConfig(config);
+  if (errors.length > 0) return { errors };
+
+  store.updatePanel(panelId, panel);
+  const message = buildPanelMessage({ ...panel, id: panelId, types: store.getPanel(panelId).types });
+  const { channelId, messageId } = await deliver(message, panel.channelId);
+  store.setPanelLocation(panelId, channelId, messageId);
+  return { errors: [], panelId, panel };
+}
+
+module.exports = { publishPanel, savePanelEdits };

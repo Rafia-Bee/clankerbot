@@ -1,4 +1,5 @@
 // Rules for tickets, kept apart from Discord so they can be tested.
+//   canOpen           whether new tickets of a type can be opened (not removed from its panel, panel not deleted)
 //   canUse            whether someone may press a ticket button (staff: all, the opener: Close only)
 //   transitionError   why a button can't be used on a ticket's current status, or null if it can
 //   isDueForDeletion  whether a closed ticket's delete-after days have passed
@@ -9,6 +10,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const CATEGORY_LIMIT = 50;
 const READ = ["ViewChannel", "ReadMessageHistory"];
 const WRITE = ["SendMessages", "AddReactions", "AttachFiles", "EmbedLinks"];
+
+function canOpen(type) {
+  return Boolean(type) && !type.removed && !type.panel_deleted_at;
+}
 
 function canUse(action, { isStaff, isOpener }) {
   if (action === "close") return isStaff || isOpener;
@@ -35,4 +40,4 @@ function isCategoryFull(channelCount) {
   return channelCount >= CATEGORY_LIMIT;
 }
 
-module.exports = { canUse, transitionError, isDueForDeletion, memberAccess, isCategoryFull };
+module.exports = { canOpen, canUse, transitionError, isDueForDeletion, memberAccess, isCategoryFull };
