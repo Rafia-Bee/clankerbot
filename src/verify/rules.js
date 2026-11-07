@@ -2,7 +2,8 @@
 //   sameLegion          compares legion names without caring about capitals or spaces
 //   nicknameFor         the nickname for a character name, cut to Discord's 32 characters
 //   decideVerification  what a lookup result means: guild, guest, taken, try again, and so on
-//   roleChanges         which roles to add and remove for an outcome
+//   classRoleChanges    the class role to add for a class, and the other class roles to remove
+//   roleChanges         which roles to add and remove for an outcome and the character's class
 //   verifyMessage       what to tell the member
 
 const { escapeMarkdown } = require("discord.js");
@@ -28,13 +29,20 @@ function decideVerification({ typedName, result, claimOwnerId = null, discordId,
   return { outcome, character, nickname: nicknameFor(character.name) };
 }
 
-function roleChanges(outcome, config) {
+function classRoleChanges(classRoles = {}, className) {
+  if (!className) return { add: [], remove: [] };
+  const own = classRoles[className.trim().toLowerCase()];
+  return { add: own ? [own] : [], remove: Object.values(classRoles).filter((id) => id !== own) };
+}
+
+function roleChanges(outcome, config, className = null) {
   const guildRoles = [config.guildRoleId, config.trustedRoleId];
-  if (outcome === "guild") return { add: guildRoles, remove: [config.guestRoleId] };
-  if (outcome === "guest" || outcome === "guest_unconfirmed") {
-    return { add: [config.guestRoleId], remove: guildRoles };
-  }
-  return null;
+  let changes;
+  if (outcome === "guild") changes = { add: guildRoles, remove: [config.guestRoleId] };
+  else if (outcome === "guest" || outcome === "guest_unconfirmed") changes = { add: [config.guestRoleId], remove: guildRoles };
+  else return null;
+  const classes = classRoleChanges(config.classRoles, className);
+  return { add: [...changes.add, ...classes.add], remove: [...changes.remove, ...classes.remove] };
 }
 
 function verifyMessage(decision, { legion, serverName, maxNameLength }) {

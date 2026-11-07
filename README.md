@@ -49,12 +49,13 @@ To copy IDs, turn on **Developer Mode** in Discord (**User Settings → Advanced
 | `TRUSTED_ROLE_ID` | The trusted role, also for members of your legion |
 | `GUEST_ROLE_ID` | The role for everyone else who verifies |
 | `VERIFY_LEGION` | Your legion's name as the game spells it. Starts as `Entropy`. |
+| `CLASS_ROLES` | *(optional)* A role for each class, like `Gladiator:111,Cleric:222`. See [Class roles](#class-roles). Leave empty if you don't want class roles. |
 
 Everything else in `.env.example` already has a sensible value. Copy those lines over as they are.
 
 ### 4. Set up your server
 
-In **Server Settings → Roles**, drag the bot's role **above** the Guild, Trusted and Guest roles. Discord only lets a bot give out roles that are below its own, and only rename members whose top role is below its own.
+In **Server Settings → Roles**, drag the bot's role **above** the Guild, Trusted and Guest roles, and the class roles if you use them. Discord only lets a bot give out roles that are below its own, and only rename members whose top role is below its own.
 
 ### 5. Register the commands and start the bot
 
@@ -147,7 +148,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
-| `/unverify user` | Remove a member's character and their Guild, Trusted and Guest roles, so the character can be verified by someone else | Manage Roles |
+| `/unverify user` | Remove a member's character and their Guild, Trusted, Guest and class roles, so the character can be verified by someone else | Manage Roles |
 | `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
 | `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
@@ -169,6 +170,17 @@ Verifying again with another character replaces the old one, and the roles and n
 **`/rename-members`** only changes nicknames, never roles. Without a `user`, it goes through every verified member, about 4 seconds each, and posts a summary in the channel when it's done. Members who verified with a name that wasn't found on Israphel are skipped. If a character isn't found any more (renamed or deleted in game), the summary lists them: they need to verify again with their new name.
 
 The bot can't rename the server owner (Discord doesn't allow it), or anyone whose top role is above the bot's role.
+
+### Class roles
+
+If `CLASS_ROLES` is filled in, members also get the role for their character's class when they verify, whatever their legion. It works the same with `/verify-manual`.
+
+- Write it as `ClassName:roleId`, separated by commas: `Gladiator:111,Templar:222,Cleric:333`. The class names are Gladiator, Templar, Assassin, Ranger, Sorcerer, Spiritmaster, Cleric and Chanter. Capitals don't matter.
+- If they verify again with a character of another class, the old class role is taken away.
+- If the name isn't found on Israphel, the bot can't tell the class, so class roles aren't changed.
+- `/unverify` takes the class role away too.
+
+If the bot won't start and says `CLASS_ROLES` looks wrong, check every entry has a class name, a `:` and a role ID.
 
 ### Verifying someone by hand
 

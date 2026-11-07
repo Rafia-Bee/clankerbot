@@ -13,13 +13,33 @@ const decide = (result, claimOwnerId = null) =>
 test("reads the verification settings", () => {
   assert.deepEqual(
     loadVerifyConfig({ GUILD_ROLE_ID: " 1 ", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3" }),
-    { legion: "Entropy", guildRoleId: "1", trustedRoleId: "2", guestRoleId: "3" }
+    { legion: "Entropy", guildRoleId: "1", trustedRoleId: "2", guestRoleId: "3", classRoles: {} }
   );
   assert.equal(
     loadVerifyConfig({ GUILD_ROLE_ID: "1", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3", VERIFY_LEGION: "Other" }).legion,
     "Other"
   );
   assert.throws(() => loadVerifyConfig({ GUILD_ROLE_ID: "1" }), /TRUSTED_ROLE_ID, GUEST_ROLE_ID/);
+});
+
+const roleEnv = { GUILD_ROLE_ID: "1", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3" };
+
+test("class roles are optional", () => {
+  assert.deepEqual(loadVerifyConfig(roleEnv).classRoles, {});
+  assert.deepEqual(loadVerifyConfig({ ...roleEnv, CLASS_ROLES: "  " }).classRoles, {});
+});
+
+test("reads the class roles, without caring about capitals or spaces", () => {
+  assert.deepEqual(loadVerifyConfig({ ...roleEnv, CLASS_ROLES: " Gladiator : 10 ,cleric:11, " }).classRoles, {
+    gladiator: "10",
+    cleric: "11",
+  });
+});
+
+test("a class role written wrong stops the bot with a clear message", () => {
+  assert.throws(() => loadVerifyConfig({ ...roleEnv, CLASS_ROLES: "Gladiator" }), /CLASS_ROLES.*Gladiator/);
+  assert.throws(() => loadVerifyConfig({ ...roleEnv, CLASS_ROLES: "Gladiator:" }), /CLASS_ROLES.*Gladiator:/);
+  assert.throws(() => loadVerifyConfig({ ...roleEnv, CLASS_ROLES: ":10" }), /CLASS_ROLES/);
 });
 
 test("a character in the legion gets the guild roles", () => {
@@ -68,6 +88,23 @@ test("roles to add and remove for each outcome", () => {
   assert.deepEqual(roleChanges("guest_unconfirmed", config), { add: ["U"], remove: ["G", "T"] });
   assert.equal(roleChanges("taken", config), null);
   assert.equal(roleChanges("try_later", config), null);
+});
+
+const withClasses = { ...config, classRoles: { gladiator: "GL", cleric: "CL", chanter: "CH" } };
+
+test("the character's class role is added and the other class roles removed", () => {
+  assert.deepEqual(roleChanges("guild", withClasses, "Cleric"), { add: ["G", "T", "CL"], remove: ["U", "GL", "CH"] });
+  assert.deepEqual(roleChanges("guest", withClasses, " gladiator "), { add: ["U", "GL"], remove: ["G", "T", "CL", "CH"] });
+});
+
+test("a class with no role set up takes the other class roles away", () => {
+  assert.deepEqual(roleChanges("guild", withClasses, "Ranger"), { add: ["G", "T"], remove: ["U", "GL", "CL", "CH"] });
+});
+
+test("class roles are left alone when the class isn't known", () => {
+  assert.deepEqual(roleChanges("guest_unconfirmed", withClasses), { add: ["U"], remove: ["G", "T"] });
+  assert.deepEqual(roleChanges("guild", withClasses, null), { add: ["G", "T"], remove: ["U"] });
+  assert.equal(roleChanges("taken", withClasses, "Cleric"), null);
 });
 
 const message = (decision) =>

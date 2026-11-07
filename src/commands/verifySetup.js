@@ -80,7 +80,7 @@ async function submitVerification(interaction) {
     if (result.status === "unavailable") console.warn(`Verify ${typedName}: every site failed (${result.reason})`);
 
     let problems = [];
-    const changes = roleChanges(decision.outcome, config);
+    const changes = roleChanges(decision.outcome, config, decision.character?.className);
     if (changes) {
       const saved = store.saveVerification({
         discordId,
