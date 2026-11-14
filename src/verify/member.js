@@ -1,8 +1,13 @@
 // Changes a member's roles and nickname on Discord, reporting what couldn't be done instead of failing.
+//   fetchFreshMember  gets a member with their current roles from Discord, or null if they aren't in the server
 //   canRename        whether the bot is allowed to change this member's nickname
 //   setNickname      sets the nickname if it's different: "renamed", "unchanged" or "cannot"
 //   applyRoles       adds and removes roles, skipping ones the member already has or doesn't have
 //   applyVerification  roles and nickname together, returning a list of problems (empty when all went well)
+
+async function fetchFreshMember(guild, userId) {
+  return guild.members.fetch({ user: userId, force: true }).catch(() => null);
+}
 
 function canRename(member) {
   return member.id !== member.guild.ownerId && member.manageable;
@@ -39,4 +44,4 @@ async function applyVerification(member, changes, nickname) {
   return problems;
 }
 
-module.exports = { canRename, setNickname, applyRoles, applyVerification };
+module.exports = { fetchFreshMember, canRename, setNickname, applyRoles, applyVerification };

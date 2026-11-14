@@ -7,7 +7,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, escapeMarkdown }
 const { lookupCharacter } = require("../lookup/lookup");
 const { getLookupConfig } = require("../lookup/config");
 const { renameDecision, renameSummary } = require("../verify/rename");
-const { setNickname } = require("../verify/member");
+const { setNickname, fetchFreshMember } = require("../verify/member");
 const { getStore } = require("../store");
 
 const REASON = "Renamed to in-game name";
@@ -36,7 +36,7 @@ async function renameOne(interaction, user) {
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+  const member = await fetchFreshMember(interaction.guild, user.id);
   if (!member) return interaction.editReply(`${user} isn't in the server any more.`);
 
   const name = `**${escapeMarkdown(saved.char_name)}**`;
@@ -70,7 +70,7 @@ async function renameAll(interaction) {
   const totals = { renamed: [], unchanged: 0, notFound: [], cannotRename: [], tryLater: [], left: 0 };
   try {
     for (const saved of rows) {
-      const member = await interaction.guild.members.fetch(saved.discord_id).catch(() => null);
+      const member = await fetchFreshMember(interaction.guild, saved.discord_id);
       if (!member) {
         totals.left += 1;
         continue;

@@ -189,6 +189,8 @@ If the bot won't start and says `CLASS_ROLES` looks wrong, check every entry has
 - **Auto** (the default): from their character's legion, like the Verify button. If the name isn't found on Israphel, or the lookup sites don't answer, the bot asks you to pick the roles instead.
 - **Guild and Trusted** or **Guest:** they get those roles whatever their legion is. Useful when their character is hidden on the lookup sites, or when the sites are down. If the name couldn't be checked, it's saved as typed, and `/rename-members` skips them.
 
+Getting Guild and Trusted takes the Guest role away, and getting Guest takes Guild and Trusted away, even if someone gave those roles by hand.
+
 A character that's already linked to someone else is refused. The reply says who has it, so you can `/unverify` them first. If the game isn't answering and only older saved data is available, the bot uses it and says so.
 
 ## Tickets

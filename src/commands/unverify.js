@@ -3,7 +3,7 @@
 
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, escapeMarkdown } = require("discord.js");
 const { getVerifyConfig } = require("../verify/config");
-const { applyRoles } = require("../verify/member");
+const { applyRoles, fetchFreshMember } = require("../verify/member");
 const { getStore } = require("../store");
 
 module.exports = {
@@ -29,7 +29,7 @@ module.exports = {
 
     store.removeVerification(user.id);
     const { guildRoleId, trustedRoleId, guestRoleId, classRoles } = getVerifyConfig();
-    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    const member = await fetchFreshMember(interaction.guild, user.id);
     let rolesNote = "";
     if (!member) {
       rolesNote = " They're not in the server any more, so there were no roles to remove.";

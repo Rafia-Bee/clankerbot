@@ -7,7 +7,7 @@ const { getLookupConfig } = require("../lookup/config");
 const { getVerifyConfig } = require("../verify/config");
 const { roleChanges } = require("../verify/rules");
 const { decideManual, manualMessage } = require("../verify/manual");
-const { applyVerification } = require("../verify/member");
+const { applyVerification, fetchFreshMember } = require("../verify/member");
 const { getStore } = require("../store");
 
 module.exports = {
@@ -41,7 +41,7 @@ module.exports = {
     const user = interaction.options.getUser("user");
     const typedName = interaction.options.getString("name").trim();
     const roles = interaction.options.getString("roles") ?? "auto";
-    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    const member = await fetchFreshMember(interaction.guild, user.id);
     if (!member) return interaction.editReply(`${user} isn't in the server.`);
 
     const config = getVerifyConfig();
