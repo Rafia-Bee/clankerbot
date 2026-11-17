@@ -18,7 +18,7 @@ const {
 } = require("discord.js");
 const { lookupCharacter } = require("../lookup/lookup");
 const { getLookupConfig } = require("../lookup/config");
-const { getVerifyConfig } = require("../verify/config");
+const { getVerifyConfig, missingRoles } = require("../verify/config");
 const { decideVerification, roleChanges, verifyMessage } = require("../verify/rules");
 const { applyVerification } = require("../verify/member");
 const { getStore } = require("../store");
@@ -57,6 +57,12 @@ async function showVerifyForm(interaction) {
 
 async function submitVerification(interaction) {
   const discordId = interaction.user.id;
+  if (missingRoles().length > 0) {
+    return interaction.reply({
+      content: "Verification isn't set up yet. Please let a moderator know.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
   if (inProgress.has(discordId)) {
     return interaction.reply({
       content: "I'm still checking your last answer. Give it a moment.",
@@ -123,6 +129,13 @@ module.exports = {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
       return interaction.reply({
         content: "You need the Manage Server permission to do this.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+    const missing = missingRoles();
+    if (missing.length > 0) {
+      return interaction.reply({
+        content: `Verification isn't set up yet. Missing: ${missing.join(", ")}. A server admin can pick them with /settings.`,
         flags: MessageFlags.Ephemeral,
       });
     }

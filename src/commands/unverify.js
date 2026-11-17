@@ -35,7 +35,7 @@ module.exports = {
       rolesNote = " They're not in the server any more, so there were no roles to remove.";
     } else {
       try {
-        const remove = [guildRoleId, trustedRoleId, guestRoleId, ...Object.values(classRoles)];
+        const remove = [guildRoleId, trustedRoleId, guestRoleId, ...Object.values(classRoles)].filter(Boolean);
         await applyRoles(member, { add: [], remove }, "Unverified");
         rolesNote = " Took away their Guild, Trusted, Guest and class roles. Their nickname wasn't changed.";
       } catch (error) {

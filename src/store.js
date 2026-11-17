@@ -6,6 +6,10 @@
 //   removeVerification          unlinks a member's character
 //   listConfirmedVerifications  every member whose character was found on the server
 //   updateCharacterName         saves a character's new spelling after a rename
+//   getServerSettings           the roles admins picked with /settings, by their old .env name
+//   setServerSetting            saves one of those settings, or removes it when the value is empty
+//   importServerSettingsOnce    copies settings from the old .env lines the first time only; null after that
+//   close                       closes the database
 //   getStore                    the shared database, opened on first use from CLANKER_DB_PATH
 
 const fs = require("fs");
@@ -31,6 +35,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS verifications_confirmed_name
   ON verifications (char_name_lower) WHERE confirmed = 1;
 CREATE UNIQUE INDEX IF NOT EXISTS verifications_character_id
   ON verifications (character_id) WHERE character_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS server_settings (
+  key              TEXT PRIMARY KEY,
+  value            TEXT NOT NULL,
+  updated_by       TEXT,
+  updated_at       INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bot_state (
+  key              TEXT PRIMARY KEY,
+  value            TEXT NOT NULL
+);
 `;
 
 let shared = null;
@@ -73,6 +89,19 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
     rename: db.prepare(
       "UPDATE verifications SET char_name = ?, char_name_lower = ?, updated_at = ? WHERE discord_id = ?"
     ),
+    serverSettings: db.prepare("SELECT key, value FROM server_settings"),
+    serverSetting: db.prepare("SELECT value FROM server_settings WHERE key = ?"),
+    setServerSetting: db.prepare(`
+      INSERT INTO server_settings (key, value, updated_by, updated_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT (key) DO UPDATE SET
+        value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at
+    `),
+    deleteServerSetting: db.prepare("DELETE FROM server_settings WHERE key = ?"),
+    state: db.prepare("SELECT value FROM bot_state WHERE key = ?"),
+    setState: db.prepare(`
+      INSERT INTO bot_state (key, value) VALUES (?, ?)
+      ON CONFLICT (key) DO UPDATE SET value = excluded.value
+    `),
   };
 
   function findClaimOwner({ characterId, name }) {
@@ -123,6 +152,27 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
         throw error;
       }
     },
+    getServerSettings() {
+      return Object.fromEntries(statements.serverSettings.all().map((row) => [row.key, JSON.parse(row.value)]));
+    },
+    setServerSetting(key, value, updatedBy, now = Date.now()) {
+      if (value == null) statements.deleteServerSetting.run(key);
+      else statements.setServerSetting.run(key, JSON.stringify(value), updatedBy, now);
+    },
+    importServerSettingsOnce(entries, now = Date.now()) {
+      return db.transaction(() => {
+        if (statements.state.get("server_settings_imported")) return null;
+        const imported = [];
+        for (const { key, value } of entries) {
+          if (statements.serverSetting.get(key)) continue;
+          statements.setServerSetting.run(key, JSON.stringify(value), "imported from .env", now);
+          imported.push(key);
+        }
+        statements.setState.run("server_settings_imported", String(now));
+        return imported;
+      })();
+    },
+    close: () => db.close(),
   };
 }
 

@@ -1,7 +1,8 @@
 // Starts Clanker: checks the settings, loads the slash commands, logs in to Discord and runs commands, buttons and pop-ups.
 // Also starts the hourly ticket cleanup and marks tickets deleted when their channel is deleted by hand.
 // Runs the voice hubs: members who join one get their own voice channel (see voice/hub.js).
-//   checkSettings      stops the bot with a clear message when a setting is missing or wrong
+//   checkSettings      stops the bot with a clear message when a setting is missing or wrong, copies old role lines
+//                      from .env into the database once, and warns when verification roles aren't picked yet
 //   loadCommands       reads every command file in src/commands, and which buttons each one handles
 //   replyWithError     tells the person something failed, whether or not it already replied
 
@@ -12,7 +13,7 @@ require("dotenv").config({ path: process.env.ENV_FILE, quiet: true });
 const { missingSettings } = require("./config");
 const { getLookupConfig } = require("./lookup/config");
 const { lookupEvents } = require("./lookup/lookup");
-const { getVerifyConfig } = require("./verify/config");
+const { importRoleSettingsFromEnv, missingRoles } = require("./verify/config");
 const { getStore } = require("./store");
 const { handleTicketComponent } = require("./tickets/interactions");
 const { startTicketCleanup } = require("./tickets/cleanup");
@@ -26,8 +27,8 @@ function checkSettings() {
   }
   const checks = [
     ["lookup settings", getLookupConfig],
-    ["verification settings", getVerifyConfig],
     ["database", getStore],
+    ["role settings", importRoleSettingsFromEnv],
   ];
   for (const [what, load] of checks) {
     try {
@@ -36,6 +37,10 @@ function checkSettings() {
       console.error(`Problem with the ${what}: ${error.message}`);
       process.exit(1);
     }
+  }
+  const missingRoleNames = missingRoles();
+  if (missingRoleNames.length > 0) {
+    console.warn(`Verification is off until these are picked with /settings: ${missingRoleNames.join(", ")}`);
   }
 }
 
@@ -109,7 +114,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
+  if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
     const handler = componentHandlers.get(interaction.customId.split(":")[0]);
     if (!handler) return;
     try {

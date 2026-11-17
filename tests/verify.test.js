@@ -10,36 +10,22 @@ const found = (extra = {}, stale = false) => ({ status: "found", stale, characte
 const decide = (result, claimOwnerId = null) =>
   decideVerification({ typedName: "kfc", result, claimOwnerId, discordId: "100", legion: "Entropy" });
 
-test("reads the verification settings", () => {
-  assert.deepEqual(
-    loadVerifyConfig({ GUILD_ROLE_ID: " 1 ", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3" }),
-    { legion: "Entropy", guildRoleId: "1", trustedRoleId: "2", guestRoleId: "3", classRoles: {} }
-  );
-  assert.equal(
-    loadVerifyConfig({ GUILD_ROLE_ID: "1", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3", VERIFY_LEGION: "Other" }).legion,
-    "Other"
-  );
-  assert.throws(() => loadVerifyConfig({ GUILD_ROLE_ID: "1" }), /TRUSTED_ROLE_ID, GUEST_ROLE_ID/);
-});
-
-const roleEnv = { GUILD_ROLE_ID: "1", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3" };
-
-test("class roles are optional", () => {
-  assert.deepEqual(loadVerifyConfig(roleEnv).classRoles, {});
-  assert.deepEqual(loadVerifyConfig({ ...roleEnv, CLASS_ROLES: "  " }).classRoles, {});
-});
-
-test("reads the class roles, without caring about capitals or spaces", () => {
-  assert.deepEqual(loadVerifyConfig({ ...roleEnv, CLASS_ROLES: " Gladiator : 10 ,cleric:11, " }).classRoles, {
-    gladiator: "10",
-    cleric: "11",
+test("reads the legion from .env and the roles from the saved settings", () => {
+  const saved = { GUILD_ROLE_ID: "1", TRUSTED_ROLE_ID: "2", GUEST_ROLE_ID: "3" };
+  assert.deepEqual(loadVerifyConfig({}, saved), {
+    legion: "Entropy",
+    guildRoleId: "1",
+    trustedRoleId: "2",
+    guestRoleId: "3",
+    classRoles: {},
   });
+  assert.equal(loadVerifyConfig({ VERIFY_LEGION: " Other " }, saved).legion, "Other");
 });
 
-test("a class role written wrong stops the bot with a clear message", () => {
-  assert.throws(() => loadVerifyConfig({ ...roleEnv, CLASS_ROLES: "Gladiator" }), /CLASS_ROLES.*Gladiator/);
-  assert.throws(() => loadVerifyConfig({ ...roleEnv, CLASS_ROLES: "Gladiator:" }), /CLASS_ROLES.*Gladiator:/);
-  assert.throws(() => loadVerifyConfig({ ...roleEnv, CLASS_ROLES: ":10" }), /CLASS_ROLES/);
+test("missing roles don't stop the bot, they're just empty", () => {
+  const config = loadVerifyConfig({}, { GUILD_ROLE_ID: "1" });
+  assert.equal(config.trustedRoleId, null);
+  assert.equal(config.guestRoleId, null);
 });
 
 test("a character in the legion gets the guild roles", () => {

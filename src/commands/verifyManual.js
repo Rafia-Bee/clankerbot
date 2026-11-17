@@ -4,7 +4,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require("discord.js");
 const { lookupCharacter } = require("../lookup/lookup");
 const { getLookupConfig } = require("../lookup/config");
-const { getVerifyConfig } = require("../verify/config");
+const { getVerifyConfig, missingRoles } = require("../verify/config");
 const { roleChanges } = require("../verify/rules");
 const { decideManual, manualMessage } = require("../verify/manual");
 const { applyVerification, fetchFreshMember } = require("../verify/member");
@@ -33,6 +33,14 @@ module.exports = {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) {
       return interaction.reply({
         content: "You need the Manage Roles permission to do this.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+
+    const missing = missingRoles();
+    if (missing.length > 0) {
+      return interaction.reply({
+        content: `Verification isn't set up yet. Missing: ${missing.join(", ")}. A server admin can pick them with /settings.`,
         flags: MessageFlags.Ephemeral,
       });
     }

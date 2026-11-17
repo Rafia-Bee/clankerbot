@@ -37,7 +37,7 @@ The bot doesn't need any of the "Privileged Gateway Intents" switches on the **B
 
 Copy `.env.example` to a new file called `.env` and fill in the blanks. Every line has a comment explaining what it's for.
 
-To copy IDs, turn on **Developer Mode** in Discord (**User Settings → Advanced**), then right-click a server, channel, role or user and pick **Copy ID**.
+To copy an ID, turn on **Developer Mode** in Discord (**User Settings → Advanced**), then right-click the server and pick **Copy ID**. You don't need role IDs: you pick the roles in Discord with `/settings` once the bot is running (step 6).
 
 | Setting | What it is |
 | --- | --- |
@@ -45,11 +45,7 @@ To copy IDs, turn on **Developer Mode** in Discord (**User Settings → Advanced
 | `CLIENT_ID` | Developer Portal → **General Information** → **Application ID** |
 | `GUILD_ID` | Your server's ID |
 | `AION2INDEX_API_KEY` | The key for character lookups, from the [aion2index community panel](https://aion2index.com/communities/docs). You can use the same key as orcabot. See [Character lookups](#character-lookups). |
-| `GUILD_ROLE_ID` | The guild role, for members of your legion |
-| `TRUSTED_ROLE_ID` | The trusted role, also for members of your legion |
-| `GUEST_ROLE_ID` | The role for everyone else who verifies |
 | `VERIFY_LEGION` | Your legion's name as the game spells it. Starts as `Entropy`. |
-| `CLASS_ROLES` | *(optional)* A role for each class, like `Gladiator:111,Cleric:222`. See [Class roles](#class-roles). Leave empty if you don't want class roles. |
 
 Everything else in `.env.example` already has a sensible value. Copy those lines over as they are.
 
@@ -66,11 +62,34 @@ npm start
 
 The first line tells Discord which slash commands the bot has. Run it again whenever a command is added or changed. When the bot is running you'll see `Logged in as Clanker#1234`.
 
-### 6. Post the Verify button
+### 6. Pick the verification roles
+
+Run `/settings` in Discord. Only server admins (people with **Manage Server**) can use it, and only you see the reply.
+
+1. The overview shows each role, what's still **Missing**, and any **Problems**.
+2. Pick a setting from the **Change a setting** list, then pick the role from Discord's own list. It's saved straight away, no restart needed.
+3. For **Class roles**, press **Add or change**, type the class name as the game spells it and pick its role. Use the **Remove** list to take one off.
+
+| Setting | What it is |
+| --- | --- |
+| Guild role | Given, with the Trusted role, to members of your legion |
+| Trusted role | Given together with the Guild role |
+| Guest role | Given to everyone else who verifies |
+| Class roles | *(optional)* A role for each class. See [Class roles](#class-roles). |
+
+Until the Guild, Trusted and Guest roles are picked, verification is off: the Verify button, `/verify-setup` and `/verify-manual` say so. The rest of the bot works as normal.
+
+Under **Problems**, the bot warns you when a role you picked was deleted, or sits above its own role (see step 4). Every change is written to the bot's log, with who changed it.
+
+The roles are saved in the bot's database (`data/clanker.db`, or `/data/clanker.db` on Fly.io), not in `.env`. `npm run db:reset` wipes them too.
+
+**Coming from an older version?** If your `.env` still has `GUILD_ROLE_ID`, `TRUSTED_ROLE_ID`, `GUEST_ROLE_ID` or `CLASS_ROLES`, the bot copies them into the database the first time it starts with `/settings`, and says so in its log. After that it ignores those lines, so you can delete them.
+
+### 7. Post the Verify button
 
 Run `/verify-setup` in the channel where new members should verify. See [Verification](#verification).
 
-### 7. Make a voice hub (optional)
+### 8. Make a voice hub (optional)
 
 Run `/hub-setup` in a text channel inside the category where the voice channels should go. See [Voice hubs](#voice-hubs).
 
@@ -126,7 +145,8 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 - **Update the bot after a change:** run `fly deploy`, or start the deploy from GitHub's **Actions** tab
 - **See what the bot is doing:** `fly logs`
 - **Restart it:** `fly apps restart clankerbot`
-- **Change a setting:** download the live settings, edit them, and put them back:
+- **Change a verification role:** use `/settings` in Discord.
+- **Change any other setting:** download the live settings, edit them, and put them back:
   ```bash
   fly ssh sftp get /data/.env server.env
   # edit server.env
@@ -145,6 +165,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
+| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out. See [step 6](#6-pick-the-verification-roles). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
@@ -173,14 +194,12 @@ The bot can't rename the server owner (Discord doesn't allow it), or anyone whos
 
 ### Class roles
 
-If `CLASS_ROLES` is filled in, members also get the role for their character's class when they verify, whatever their legion. It works the same with `/verify-manual`.
+If class roles are set in `/settings`, members also get the role for their character's class when they verify, whatever their legion. It works the same with `/verify-manual`.
 
-- Write it as `ClassName:roleId`, separated by commas: `Gladiator:111,Templar:222,Cleric:333`. The class names are Gladiator, Templar, Assassin, Ranger, Sorcerer, Spiritmaster, Cleric and Chanter. Capitals don't matter.
+- The class names are Gladiator, Templar, Assassin, Ranger, Sorcerer, Spiritmaster, Cleric and Chanter. Capitals don't matter.
 - If they verify again with a character of another class, the old class role is taken away.
 - If the name isn't found on Israphel, the bot can't tell the class, so class roles aren't changed.
 - `/unverify` takes the class role away too.
-
-If the bot won't start and says `CLASS_ROLES` looks wrong, check every entry has a class name, a `:` and a role ID.
 
 ### Verifying someone by hand
 
@@ -349,7 +368,8 @@ As with any Discord poll, anyone can see who voted for what.
 - **"I need View Channel, Read Message History and Manage Messages in this channel":** give the bot's role those permissions, in Server Settings or in that channel's settings.
 - **The bot won't start and says settings are missing:** fill those in `.env`.
 - **Verify says "I couldn't update everything on your profile":** drag the bot's role above the Guild, Trusted and Guest roles (setup step 4), and check it has Manage Roles and Manage Nicknames. The bot's log says which part failed. The server owner can never be renamed by a bot.
-- **"Problem with the verification settings":** fill in `GUILD_ROLE_ID`, `TRUSTED_ROLE_ID` and `GUEST_ROLE_ID` in `.env`.
+- **"Verification isn't set up yet":** a server admin needs to pick the Guild, Trusted and Guest roles with `/settings`.
+- **A role isn't given out, or `/settings` shows a problem:** open `/settings` and read the **Problems** list. Usually the role was deleted (pick the new one) or the bot's role needs moving higher (step 4).
 - **Clicking a ticket button says something went wrong:** check the bot has **Manage Channels** and **Manage Roles**, and that it can see the ticket categories. The bot's log has the details.
 - **"The ticket category is missing":** a category in the panel's settings was deleted, or the ID is wrong. Fix the file and post the panel again.
 - **A ticket didn't move when closed or reopened:** the reply says why (the category is missing or full). The ticket still works where it is.
