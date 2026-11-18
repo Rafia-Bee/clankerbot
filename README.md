@@ -24,14 +24,14 @@ npm install
 2. **Bot** tab: click **Reset Token** and copy the token. You'll need it in step 3. Keep it secret: anyone with it can control the bot.
 3. **OAuth2 → URL Generator**: tick `bot` and `applications.commands`, then tick these permissions:
    - View Channels, Send Messages, Embed Links, Read Message History
-   - Manage Messages, Send Polls
+   - Manage Messages, Send Polls, Add Reactions
    - Manage Roles, Manage Nicknames, Manage Channels
    - Connect, Speak, Move Members (for [voice hubs](#voice-hubs))
 4. Open the link it gives you at the bottom, pick your server, and click **Authorize**.
 
 Already invited the bot without some of these? Add them to the bot's role in **Server Settings → Roles** instead.
 
-The bot doesn't need any of the "Privileged Gateway Intents" switches on the **Bot** tab. Leave them off.
+On the **Bot** tab, under "Privileged Gateway Intents", turn on **Message Content Intent** and click **Save Changes**. This lets the bot read chat for the [trigger words](#counting-bad-words). Leave the other switches off. If this switch is off, the bot won't start.
 
 ### 3. Fill in the settings
 
@@ -165,13 +165,15 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
-| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out. See [step 6](#6-pick-the-verification-roles). | Manage Server |
+| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, and the `/badword` trigger words and reaction. See [step 6](#6-pick-the-verification-roles). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
 | `/unverify user` | Remove a member's character and their Guild, Trusted, Guest and class roles, so the character can be verified by someone else | Manage Roles |
 | `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
 | `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
+| `/badword user` | Add 1 to `user`'s count. Everyone starts at 0. See [Counting with /badword](#counting-bad-words). | Anyone |
+| `/badword-count user` | Show how many `user` has. | Anyone |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
@@ -345,6 +347,23 @@ If something's wrong (one answer, a typo in the duration), only you see the mess
 
 As with any Discord poll, anyone can see who voted for what.
 
+## Counting bad words
+
+Everyone has a count that starts at 0. There are two ways to add to it:
+
+- **By hand:** `/badword user` adds 1 to that member's count.
+- **From chat:** when someone says a trigger word in a message, the bot adds 1 to their own count and reacts to the message (with a check mark, unless you pick another emoji). A message adds 1 at most, however many trigger words it has.
+
+`/badword-count user` shows a member's count.
+
+To pick the trigger words, run `/settings`, choose **Trigger words** from the list, and click **Add words**. Put `;` between words to add several at once, like `cat; dog; good game`. As that shows, a trigger word can also be a few words. To remove one, pick it from the **Remove a word** list. You can have up to 25.
+
+To change the emoji, choose **Trigger word reaction** in `/settings` and click **Change emoji**. Paste one emoji (on Windows, press the Windows key and `.` to open the emoji picker). For a server's own emoji, type `\:name:` in any Discord chat and send it: Discord shows something like `<:name:123456789>`, which you copy into the box. The bot can only use server emojis from servers it's in. **Use the default** goes back to the check mark.
+
+Trigger words only count as whole words, and capitals don't matter. So if the word is `cat`, then "CAT" and "my cat!" count, but "cats" and "category" don't. Messages from bots don't count.
+
+Swapping in lookalike letters doesn't get around it. Letters from other alphabets that look the same (like the Russian `а`), accents (`cát`), fancy fonts (`𝐜𝐚𝐭`) and hidden characters typed inside a word are all read as the plain word.
+
 ## Character lookups
 
 `/whois` looks characters up on [aion2index.com](https://aion2index.com) first, and on [shugo.gg](https://shugo.gg) when aion2index doesn't answer. `LOOKUP_SOURCES` in `.env` changes the order, or picks just one site.
@@ -381,6 +400,8 @@ As with any Discord poll, anyone can see who voted for what.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.
 - **`/whois` says a character doesn't exist, but it does:** check the spelling. Characters hidden on aion2index are still found through shugo.gg.
+- **The bot won't start and the log says "Used disallowed intents":** turn on **Message Content Intent** on the **Bot** tab in the Developer Portal (setup step 2), then start the bot again.
+- **Trigger words don't add to the count:** check the word is in `/settings` under **Trigger words**, and that it's said as a whole word. If the count goes up but there's no reaction, give the bot's role **Add Reactions** and **Read Message History** in that channel.
 - **Invalid token:** reset it in the Developer Portal and update `BOT_TOKEN`.
 
 ## License

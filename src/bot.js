@@ -1,12 +1,13 @@
 // Starts Clanker: checks the settings, loads the slash commands, logs in to Discord and runs commands, buttons and pop-ups.
 // Also starts the hourly ticket cleanup and marks tickets deleted when their channel is deleted by hand.
 // Runs the voice hubs: members who join one get their own voice channel (see voice/hub.js).
+// Watches chat for the /badword trigger words (see badwords/chat.js), without keeping chat messages in memory.
 //   checkSettings      stops the bot with a clear message when a setting is missing or wrong, copies old role lines
 //                      from .env into the database once, and warns when verification roles aren't picked yet
 //   loadCommands       reads every command file in src/commands, and which buttons each one handles
 //   replyWithError     tells the person something failed, whether or not it already replied
 
-const { Client, GatewayIntentBits, Collection, MessageFlags } = require("discord.js");
+const { Client, GatewayIntentBits, Collection, MessageFlags, Options } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 require("dotenv").config({ path: process.env.ENV_FILE, quiet: true });
@@ -18,6 +19,7 @@ const { getStore } = require("./store");
 const { handleTicketComponent } = require("./tickets/interactions");
 const { startTicketCleanup } = require("./tickets/cleanup");
 const { createVoiceHubs } = require("./voice/hub");
+const { handleBadWordMessage } = require("./badwords/chat");
 
 function checkSettings() {
   const missing = missingSettings(process.env, ["BOT_TOKEN"]);
@@ -85,7 +87,15 @@ async function replyWithError(interaction) {
   }
 }
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+  makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 0 }),
+});
 const { commands, componentHandlers } = loadCommands();
 componentHandlers.set("ticket", handleTicketComponent);
 const voiceHubs = createVoiceHubs(client);
@@ -103,6 +113,10 @@ client.on("channelDelete", (channel) => {
 
 client.on("voiceStateUpdate", (oldState, newState) => {
   voiceHubs.handleVoiceUpdate(oldState, newState).catch((error) => console.error("Voice update failed:", error));
+});
+
+client.on("messageCreate", (message) => {
+  handleBadWordMessage(message).catch((error) => console.error("Trigger word check failed:", error));
 });
 
 client.on("error", (error) => {

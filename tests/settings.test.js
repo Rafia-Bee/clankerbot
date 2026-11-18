@@ -19,7 +19,7 @@ test("every setting has a unique key, a label and a known kind", () => {
   assert.equal(new Set(keys).size, keys.length);
   for (const setting of SETTINGS) {
     assert.ok(setting.label, setting.key);
-    assert.ok(["role", "roleMap"].includes(setting.kind), setting.key);
+    assert.ok(["role", "roleMap", "words", "emoji"].includes(setting.kind), setting.key);
   }
 });
 
@@ -110,6 +110,25 @@ test("class roles: adding replaces the same name, removing drops it", () => {
   assert.deepEqual(removeRoleMapEntry(list, "RANGER"), [{ name: "Cleric", roleId: "2" }]);
   assert.throws(() => addRoleMapEntry([], "  ", "1"), /name/);
   assert.throws(() => addRoleMapEntry([], "Ranger:x", "1"), /name/);
+});
+
+test("trigger words: shown as a list, never a problem, and not read from .env", () => {
+  const words = settingByKey("BAD_WORDS");
+  assert.equal(words.required, false);
+  assert.equal(describeValue(words, ["hello", "good game"]), "hello, good game");
+  assert.equal(describeValue(words, []), "not set");
+  assert.deepEqual(findProblems({ BAD_WORDS: ["hello"] }, { hasRole: () => false, canGiveRole: () => false }), []);
+  assert.deepEqual(importsFromEnv({ BAD_WORDS: "hello" }), []);
+  assert.deepEqual(missingRequired({}).map((s) => s.key), ["GUILD_ROLE_ID", "TRUSTED_ROLE_ID", "GUEST_ROLE_ID"]);
+});
+
+test("the reaction emoji: optional, shown as itself, or the default when empty", () => {
+  const reaction = settingByKey("BAD_WORD_REACTION");
+  assert.equal(reaction.required, false);
+  assert.equal(describeValue(reaction, "<:pepe:1>"), "<:pepe:1>");
+  assert.match(describeValue(reaction, null), /default/);
+  assert.deepEqual(findProblems({ BAD_WORD_REACTION: "<:pepe:1>" }, { hasRole: () => false, canGiveRole: () => false }), []);
+  assert.deepEqual(importsFromEnv({ BAD_WORD_REACTION: "x" }), []);
 });
 
 test("server settings in the database", async (t) => {

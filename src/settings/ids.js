@@ -1,12 +1,12 @@
-// The roles admins pick with /settings, and the rules around them.
-//   SETTINGS            every setting: its old .env name, label, kind, and whether it's required
+// The settings admins pick with /settings (verification roles, /badword trigger words and reaction), and the rules around them.
+//   SETTINGS            every setting: its key (the old .env name for roles), label, kind, and whether it's required
 //   settingByKey        finds a setting by its key
 //   importsFromEnv      the roles found in the old .env lines, ready to copy into the database
 //   isEmpty             true when a setting has no value
 //   missingRequired     the required roles that aren't set
 //   toConfigFields      turns saved values into the role fields verification reads
 //   findProblems        deleted roles, and roles the bot can't give out
-//   describeValue       a setting's value as Discord mentions, or "not set"
+//   describeValue       a setting's value as Discord mentions, words or an emoji, or "not set"
 //   addRoleMapEntry     adds or replaces a class in the class role list
 //   removeRoleMapEntry  removes a class from the class role list
 
@@ -15,6 +15,8 @@ const SETTINGS = [
   { key: "TRUSTED_ROLE_ID", label: "Trusted role", kind: "role", required: true, help: "Given together with the Guild role." },
   { key: "GUEST_ROLE_ID", label: "Guest role", kind: "role", required: true, help: "Given to everyone else who verifies: other legions, no legion, or a name not found on the server." },
   { key: "CLASS_ROLES", label: "Class roles", kind: "roleMap", entryName: "Class", help: "Each class and its role: Gladiator, Templar, Assassin, Ranger, Sorcerer, Spiritmaster, Cleric, Chanter." },
+  { key: "BAD_WORDS", label: "Trigger words", kind: "words", required: false, help: "Saying one of these words in chat adds 1 to that person's /badword count. Capitals don't matter." },
+  { key: "BAD_WORD_REACTION", label: "Trigger word reaction", kind: "emoji", required: false, help: "The emoji the bot reacts with when someone says a trigger word." },
 ];
 
 const ID = /^\d+$/;
@@ -34,6 +36,7 @@ function roleMapFromEnv(text) {
 }
 
 function valueFromEnv(setting, raw) {
+  if (setting.kind !== "role" && setting.kind !== "roleMap") return null;
   const text = raw?.trim();
   if (!text) return null;
   if (setting.kind === "roleMap") return roleMapFromEnv(text);
@@ -70,7 +73,7 @@ function findProblems(values, guild) {
   const problems = [];
   for (const setting of SETTINGS) {
     const value = values[setting.key];
-    if (isEmpty(value)) continue;
+    if (isEmpty(value) || (setting.kind !== "role" && setting.kind !== "roleMap")) continue;
     if (setting.kind === "role") {
       if (!guild.hasRole(value)) problems.push(`${setting.label}: the role was deleted.`);
       else if (!guild.canGiveRole(value)) {
@@ -89,8 +92,10 @@ function findProblems(values, guild) {
 }
 
 function describeValue(setting, value) {
-  if (isEmpty(value)) return "not set";
+  if (isEmpty(value)) return setting.kind === "emoji" ? "not set, so the default check mark is used" : "not set";
   if (setting.kind === "role") return `<@&${value}>`;
+  if (setting.kind === "words") return value.join(", ");
+  if (setting.kind === "emoji") return value;
   return value.map(({ name, roleId }) => `${name} → <@&${roleId}>`).join("\n");
 }
 
