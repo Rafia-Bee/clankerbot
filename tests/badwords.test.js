@@ -155,3 +155,62 @@ test("lookalike letters don't make longer words count", () => {
   assert.equal(hasTriggerWord("c\u0430ts", ["cat"]), false);
   assert.equal(hasTriggerWord("category", ["c\u0430t"]), false);
 });
+
+const { rankBadWords, badWordLeaderboardReply } = require("../src/badwords/messages");
+
+test("the leaderboard lists a server's members from highest count down, up to the limit", () => {
+  store.addBadWord("1", "100");
+  for (let i = 0; i < 3; i++) store.addBadWord("1", "200");
+  for (let i = 0; i < 2; i++) store.addBadWord("1", "300");
+  store.addBadWord("2", "400");
+  assert.deepEqual(store.getBadWordLeaderboard("1", 10), [
+    { userId: "200", count: 3 },
+    { userId: "300", count: 2 },
+    { userId: "100", count: 1 },
+  ]);
+  assert.deepEqual(store.getBadWordLeaderboard("1", 2).map((r) => r.userId), ["200", "300"]);
+  assert.deepEqual(store.getBadWordLeaderboard("3", 10), []);
+});
+
+test("members with the same count share a rank", () => {
+  const rows = [
+    { userId: "a", count: 5 },
+    { userId: "b", count: 5 },
+    { userId: "c", count: 2 },
+    { userId: "d", count: 1 },
+    { userId: "e", count: 1 },
+  ];
+  assert.deepEqual(rankBadWords(rows).map((r) => r.rank), [1, 1, 3, 4, 4]);
+});
+
+test("the leaderboard reply shows rank, member and count", () => {
+  const reply = badWordLeaderboardReply([
+    { userId: "200", count: 3 },
+    { userId: "300", count: 3 },
+    { userId: "100", count: 1 },
+  ]);
+  assert.equal(
+    reply,
+    "**Bad word leaderboard**\n**#1** <@200>: 3\n**#1** <@300>: 3\n**#3** <@100>: 1"
+  );
+  assert.equal(badWordLeaderboardReply([]), "Nobody has a count yet.");
+});
+
+const { parseLeaderboardTitle, leaderboardTitleFor, DEFAULT_LEADERBOARD_TITLE } = require("../src/badwords/messages");
+
+test("the leaderboard uses the picked name, or the default when none is picked", () => {
+  assert.equal(DEFAULT_LEADERBOARD_TITLE, "Bad word leaderboard");
+  assert.equal(leaderboardTitleFor({}), "Bad word leaderboard");
+  assert.equal(leaderboardTitleFor({ BAD_WORD_LEADERBOARD_TITLE: "Naughty List" }), "Naughty List");
+  assert.equal(
+    badWordLeaderboardReply([{ userId: "100", count: 2 }], "Naughty List"),
+    "**Naughty List**\n**#1** <@100>: 2"
+  );
+});
+
+test("a typed leaderboard name is trimmed, empty means the default, and long names are turned down", () => {
+  assert.equal(parseLeaderboardTitle("  Naughty   List "), "Naughty List");
+  assert.equal(parseLeaderboardTitle("   "), null);
+  assert.equal(parseLeaderboardTitle("x".repeat(100)).length, 100);
+  assert.throws(() => parseLeaderboardTitle("x".repeat(101)), /100/);
+});

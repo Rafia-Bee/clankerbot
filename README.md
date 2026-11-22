@@ -165,7 +165,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
-| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, and the `/badword` trigger words and reaction. See [step 6](#6-pick-the-verification-roles). | Manage Server |
+| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the `/badword` trigger words and reaction, and the leaderboard name. See [step 6](#6-pick-the-verification-roles). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
@@ -174,6 +174,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
 | `/badword user` | Add 1 to `user`'s count. Everyone starts at 0. See [Counting with /badword](#counting-bad-words). | Anyone |
 | `/badword-count user` | Show how many `user` has. | Anyone |
+| `/badword-leaderboard` | Show the 10 members with the highest counts, ranked. | Anyone |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
@@ -355,6 +356,10 @@ Everyone has a count that starts at 0. There are two ways to add to it:
 - **From chat:** when someone says a trigger word in a message, the bot adds 1 to their own count and reacts to the message (with a check mark, unless you pick another emoji). A message adds 1 at most, however many trigger words it has.
 
 `/badword-count user` shows a member's count.
+
+`/badword-leaderboard` shows the 10 members with the highest counts, highest first. Members with the same count share a place (so you might see #1, #1, #3). Names show without pinging anyone.
+
+To rename the leaderboard (say, to "Naughty List"), choose **Leaderboard name** in `/settings` and click **Change name**. **Use the default** goes back to "Bad word leaderboard".
 
 To pick the trigger words, run `/settings`, choose **Trigger words** from the list, and click **Add words**. Put `;` between words to add several at once, like `cat; dog; good game`. As that shows, a trigger word can also be a few words. To remove one, pick it from the **Remove a word** list. You can have up to 25.
 

@@ -1,4 +1,4 @@
-// /settings: lets server admins pick the verification roles from Discord's own role picker, and the /badword trigger words and reaction.
+// /settings: lets server admins pick the verification roles from Discord's own role picker, and the /badword trigger words, reaction and leaderboard name.
 //   guildChecks      what findProblems needs to know about the server (does a role exist, can the bot give it)
 //   mainView         the overview: every setting, what's missing, problems, and a list to pick one to change
 //   roleView         one role's screen: a role picker and Back
@@ -8,6 +8,8 @@
 //   addWordModal     the pop-up for adding trigger words, several at once with ; between them
 //   emojiView        the reaction emoji screen: Change, Use the default, Back
 //   emojiModal       the pop-up for typing the reaction emoji
+//   textView         the leaderboard name screen: Change, Use the default, Back
+//   textModal        the pop-up for typing the leaderboard name
 //   botCanUseEmoji   whether the bot can react with an emoji, asking Discord about server emojis added after it started
 //   save             saves a setting, refreshes the verification settings and logs the change
 //   handleComponent  handles every button, list and pop-up on these screens
@@ -39,6 +41,7 @@ const {
 } = require("../settings/ids");
 const { MAX_WORDS, addWords, removeWord } = require("../badwords/words");
 const { parseReactionEmoji, canUseEmoji } = require("../badwords/reaction");
+const { parseLeaderboardTitle } = require("../badwords/messages");
 const { getStore } = require("../store");
 const { clearVerifyConfig } = require("../verify/config");
 
@@ -227,6 +230,34 @@ function emojiModal(setting) {
     );
 }
 
+function textView(setting, note = "") {
+  const value = getStore().getServerSettings()[setting.key];
+  const embed = new EmbedBuilder()
+    .setColor(0x8e5cf7)
+    .setTitle(setting.label)
+    .setDescription([note, setting.help, `**Now:** ${describeValue(setting, value)}`].filter(Boolean).join("\n\n"));
+  const buttons = [
+    new ButtonBuilder().setCustomId(id("add", setting.key)).setLabel("Change name").setStyle(ButtonStyle.Primary),
+  ];
+  if (value) {
+    buttons.push(
+      new ButtonBuilder().setCustomId(id("reset", setting.key)).setLabel("Use the default").setStyle(ButtonStyle.Secondary)
+    );
+  }
+  buttons.push(backButton());
+  return { content: "", embeds: [embed], components: [new ActionRowBuilder().addComponents(buttons)] };
+}
+
+function textModal(setting) {
+  const text = new TextInputBuilder().setCustomId("text").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(100);
+  const value = getStore().getServerSettings()[setting.key];
+  if (value) text.setValue(value);
+  return new ModalBuilder()
+    .setCustomId(id("addsave", setting.key))
+    .setTitle("Name the leaderboard")
+    .addLabelComponents(new LabelBuilder().setLabel("Name").setDescription("Like: Naughty List").setTextInputComponent(text));
+}
+
 function botCanUseEmoji(interaction, emoji) {
   return canUseEmoji(emoji, {
     known: (emojiId) => interaction.client.emojis.cache.has(emojiId),
@@ -245,6 +276,7 @@ function save(interaction, setting, value) {
 function viewFor(setting) {
   if (setting.kind === "words") return wordsView(setting);
   if (setting.kind === "emoji") return emojiView(setting);
+  if (setting.kind === "text") return textView(setting);
   return setting.kind === "roleMap" ? roleMapView(setting) : roleView(setting);
 }
 
@@ -259,7 +291,7 @@ async function handleComponent(interaction) {
   if (action === "back") return interaction.update(mainView(interaction.guild));
   if (action === "pick") return interaction.update(viewFor(settingByKey(interaction.values[0])));
   if (action === "add") {
-    const modals = { words: addWordModal, emoji: emojiModal };
+    const modals = { words: addWordModal, emoji: emojiModal, text: textModal };
     return interaction.showModal((modals[setting.kind] ?? addEntryModal)(setting));
   }
 
@@ -275,7 +307,8 @@ async function handleComponent(interaction) {
   }
   if (action === "reset") {
     save(interaction, setting, null);
-    return interaction.update(emojiView(setting, "Back to the default."));
+    const view = setting.kind === "text" ? textView : emojiView;
+    return interaction.update(view(setting, "Back to the default."));
   }
   if (action === "addsave" && setting.kind === "emoji") {
     let emoji;
@@ -292,6 +325,16 @@ async function handleComponent(interaction) {
     }
     save(interaction, setting, emoji);
     return interaction.update(emojiView(setting, "Saved."));
+  }
+  if (action === "addsave" && setting.kind === "text") {
+    let text;
+    try {
+      text = parseLeaderboardTitle(interaction.fields.getTextInputValue("text"));
+    } catch (error) {
+      return interaction.reply({ content: error.message, flags: MessageFlags.Ephemeral });
+    }
+    save(interaction, setting, text);
+    return interaction.update(textView(setting, "Saved."));
   }
   if (action === "addsave" && setting.kind === "words") {
     const list = getStore().getServerSettings()[setting.key] ?? [];
@@ -321,7 +364,7 @@ async function handleComponent(interaction) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("settings")
-    .setDescription("Pick the roles verification gives out, and the /badword trigger words and reaction")
+    .setDescription("Pick the verification roles, and the /badword trigger words, reaction and leaderboard name")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   customIdPrefix: PREFIX,
   handleComponent,

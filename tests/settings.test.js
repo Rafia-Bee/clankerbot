@@ -19,7 +19,7 @@ test("every setting has a unique key, a label and a known kind", () => {
   assert.equal(new Set(keys).size, keys.length);
   for (const setting of SETTINGS) {
     assert.ok(setting.label, setting.key);
-    assert.ok(["role", "roleMap", "words", "emoji"].includes(setting.kind), setting.key);
+    assert.ok(["role", "roleMap", "words", "emoji", "text"].includes(setting.kind), setting.key);
   }
 });
 
@@ -129,6 +129,15 @@ test("the reaction emoji: optional, shown as itself, or the default when empty",
   assert.match(describeValue(reaction, null), /default/);
   assert.deepEqual(findProblems({ BAD_WORD_REACTION: "<:pepe:1>" }, { hasRole: () => false, canGiveRole: () => false }), []);
   assert.deepEqual(importsFromEnv({ BAD_WORD_REACTION: "x" }), []);
+});
+
+test("the leaderboard name: optional, shown as itself, or the default when empty", () => {
+  const title = settingByKey("BAD_WORD_LEADERBOARD_TITLE");
+  assert.equal(title.required, false);
+  assert.equal(title.kind, "text");
+  assert.equal(describeValue(title, "Naughty List"), "Naughty List");
+  assert.match(describeValue(title, null), /Bad word leaderboard/);
+  assert.deepEqual(importsFromEnv({ BAD_WORD_LEADERBOARD_TITLE: "x" }), []);
 });
 
 test("server settings in the database", async (t) => {
