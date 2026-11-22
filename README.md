@@ -371,10 +371,12 @@ Swapping in lookalike letters doesn't get around it. Letters from other alphabet
 
 ## Character lookups
 
-`/whois` looks characters up on [aion2index.com](https://aion2index.com) first, and on [shugo.gg](https://shugo.gg) when aion2index doesn't answer. `LOOKUP_SOURCES` in `.env` changes the order, or picks just one site.
+`/whois` looks characters up on the official AION 2 site ([aion2.plaync.com](https://aion2.plaync.com)) first. When that doesn't answer, it asks [aion2index.com](https://aion2index.com), and then [shugo.gg](https://shugo.gg). `LOOKUP_SOURCES` in `.env` changes the order, or picks fewer sites (`plaync`, `aion2index`, `shugo`).
 
-- When a site fails, the bot uses the other one first for 5 minutes (`LOOKUP_FAILOVER_MINUTES`), then tries it again. The bot's log says when a site stops or starts working.
-- When the game itself isn't answering, aion2index only has older saved data. The bot asks shugo.gg instead, and only shows the older data if shugo.gg fails too. The reply then says how old it is.
+The official site needs no key. It's the same data NCSOFT's own character page shows, but it isn't a documented service, so NCSOFT can change or block it without warning. That's why the other two stay as backups. Its settings (`PLAYNC_REGION`, `PLAYNC_SERVER_ID` and so on) all have defaults for Europe, Israphel.
+
+- When a site fails, the bot uses the next one first for 5 minutes (`LOOKUP_FAILOVER_MINUTES`), then tries it again. The bot's log says when a site stops or starts working.
+- When the game itself isn't answering, aion2index only has older saved data. The bot asks shugo.gg next, and only shows the older data if shugo.gg fails too. The reply then says how old it is.
 - The same name looked up twice within a minute gets the same answer, without asking the sites again.
 
 **Sharing the key with orcabot:** one aion2index key allows 60 lookups a minute across every bot using it. Clanker waits 4 seconds between lookups (`AION2INDEX_MIN_REQUEST_GAP_MS=4000`, 15 a minute) and orcabot waits 1.5 seconds (40 a minute), so together they stay under the limit. If the limit is hit anyway, Clanker uses shugo.gg until aion2index lets it back in.
@@ -403,8 +405,8 @@ Swapping in lookalike letters doesn't get around it. Letters from other alphabet
 - **A role button says "I can't give out that role right now":** the role was moved above the bot's role, or the bot lost **Manage Roles**. Drag the bot's role back above it. The bot's log says which.
 - **`/poll` says something went wrong:** give the bot's role the **Send Polls** permission, in Server Settings or in that channel's settings.
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
-- **`/whois` always says "I couldn't reach aion2index or shugo.gg":** check the bot's log for the reason. "API key rejected" means the key is wrong or was revoked in the aion2index panel.
-- **`/whois` says a character doesn't exist, but it does:** check the spelling. Characters hidden on aion2index are still found through shugo.gg.
+- **`/whois` always says "I couldn't reach any of the lookup sites":** check the bot's log for the reason. "API key rejected" means the aion2index key is wrong or was revoked in the aion2index panel. If the official site keeps failing, NCSOFT may have changed it: set `LOOKUP_SOURCES=aion2index,shugo` until it's fixed.
+- **`/whois` says a character doesn't exist, but it does:** check the spelling. A name that one site can't find is still asked on the others.
 - **The bot won't start and the log says "Used disallowed intents":** turn on **Message Content Intent** on the **Bot** tab in the Developer Portal (setup step 2), then start the bot again.
 - **Trigger words don't add to the count:** check the word is in `/settings` under **Trigger words**, and that it's said as a whole word. If the count goes up but there's no reaction, give the bot's role **Add Reactions** and **Read Message History** in that channel.
 - **Invalid token:** reset it in the Developer Portal and update `BOT_TOKEN`.

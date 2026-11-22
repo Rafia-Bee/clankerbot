@@ -3,12 +3,17 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadLookupConfig, parseLookupSources } = require("../src/lookup/config");
 
-test("defaults look up Israphel on aion2index first, then shugo.gg", () => {
+test("defaults look up Israphel on the official site first, then aion2index, then shugo.gg", () => {
   const config = loadLookupConfig({ AION2INDEX_API_KEY: "key" });
-  assert.deepEqual(config.sources, ["aion2index", "shugo"]);
+  assert.deepEqual(config.sources, ["plaync", "aion2index", "shugo"]);
   assert.equal(config.serverName, "Israphel");
   assert.equal(config.maxNameLength, 32);
   assert.equal(config.failoverMinutes, 5);
+  assert.equal(config.plaync.searchUrl, "https://api-search.plaync.com/aion2global/search/v2/character");
+  assert.equal(config.plaync.baseUrl, "https://aion2.plaync.com");
+  assert.equal(config.plaync.region, "eu");
+  assert.equal(config.plaync.serverId, 2301);
+  assert.equal(config.plaync.minRequestGapMs, 2000);
   assert.equal(config.aion2index.apiKey, "key");
   assert.equal(config.aion2index.baseUrl, "https://aion2index.com/api/v1/characters");
   assert.equal(config.aion2index.regionPath, "eu/israphel");
@@ -50,8 +55,8 @@ test("numbers that aren't whole numbers of 0 or more are an error", () => {
 
 test("parses LOOKUP_SOURCES", () => {
   assert.deepEqual(parseLookupSources("aion2index, Shugo"), ["aion2index", "shugo"]);
-  assert.deepEqual(parseLookupSources(undefined), ["aion2index", "shugo"]);
-  assert.deepEqual(parseLookupSources("  "), ["aion2index", "shugo"]);
+  assert.deepEqual(parseLookupSources(undefined), ["plaync", "aion2index", "shugo"]);
+  assert.deepEqual(parseLookupSources("  "), ["plaync", "aion2index", "shugo"]);
   assert.throws(() => parseLookupSources("shugo,other"), /unknown site "other"/);
   assert.throws(() => parseLookupSources("shugo,shugo"), /twice/);
 });

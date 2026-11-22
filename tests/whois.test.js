@@ -53,6 +53,11 @@ test("a character from shugo.gg says where it came from", () => {
   assert.equal(embed.footer.text, "From shugo.gg");
 });
 
+test("a character from the official site says where it came from", () => {
+  const embed = embedOf(whoisReply(found({ source: "plaync" }), ask));
+  assert.equal(embed.footer.text, "From the official AION 2 site");
+});
+
 test("older saved data says how old it is", () => {
   const embed = embedOf(whoisReply(found({}, true), ask));
   const seconds = Math.floor(Date.parse("2026-10-30T21:55:45.108Z") / 1000);
@@ -82,6 +87,6 @@ test("an invalid name explains what a name looks like", () => {
 
 test("every site down asks to try again later", () => {
   assert.deepEqual(whoisReply({ status: "unavailable", reason: "http 500" }, ask), {
-    content: "I couldn't reach aion2index or shugo.gg right now. Try again in a few minutes.",
+    content: "I couldn't reach any of the lookup sites right now. Try again in a few minutes.",
   });
 });

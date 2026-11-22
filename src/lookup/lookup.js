@@ -11,6 +11,7 @@ const EventEmitter = require("events");
 const { getLookupConfig } = require("./config");
 
 const SOURCES = {
+  plaync: require("./plaync"),
   aion2index: require("./aion2index"),
   shugo: require("./shugo"),
 };

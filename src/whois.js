@@ -7,7 +7,7 @@ const { EmbedBuilder, escapeMarkdown } = require("discord.js");
 
 const FACTION_COLOURS = { Asmodians: 0x8e5cf7, Elyos: 0xf2c14e };
 const OTHER_COLOUR = 0x99aab5;
-const SOURCE_LABELS = { aion2index: "aion2index", shugo: "shugo.gg" };
+const SOURCE_LABELS = { plaync: "the official AION 2 site", aion2index: "aion2index", shugo: "shugo.gg" };
 
 function numberOrUnknown(value) {
   return value == null ? "Unknown" : value.toLocaleString("en-US");
@@ -51,7 +51,7 @@ function whoisReply(result, { name, serverName, maxNameLength }) {
         content: `That doesn't look like a character name. Names are up to ${maxNameLength} characters, with no spaces or symbols like / ? # %.`,
       };
     default:
-      return { content: "I couldn't reach aion2index or shugo.gg right now. Try again in a few minutes." };
+      return { content: "I couldn't reach any of the lookup sites right now. Try again in a few minutes." };
   }
 }
 

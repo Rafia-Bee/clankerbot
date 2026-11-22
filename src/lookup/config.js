@@ -3,8 +3,8 @@
 //   loadLookupConfig    builds the lookup settings from a set of .env values
 //   getLookupConfig     loads the settings from .env once and reuses them
 
-const SITE_NAMES = ["aion2index", "shugo"];
-const DEFAULT_SOURCES = ["aion2index", "shugo"];
+const SITE_NAMES = ["plaync", "aion2index", "shugo"];
+const DEFAULT_SOURCES = ["plaync", "aion2index", "shugo"];
 
 let loaded = null;
 
@@ -51,6 +51,15 @@ function loadLookupConfig(env) {
     userAgent: text(env, "LOOKUP_USER_AGENT", "Clanker/1.0 (Discord character lookup)"),
     requestTimeoutMs: wholeNumber(env, "LOOKUP_REQUEST_TIMEOUT_MS", 15000),
     cacheTtlMs: wholeNumber(env, "LOOKUP_CACHE_TTL_MS", 60000),
+    plaync: {
+      searchUrl: trimEndSlashes(
+        text(env, "PLAYNC_SEARCH_URL", "https://api-search.plaync.com/aion2global/search/v2/character")
+      ),
+      baseUrl: trimEndSlashes(text(env, "PLAYNC_BASE_URL", "https://aion2.plaync.com")),
+      region: text(env, "PLAYNC_REGION", "eu"),
+      serverId: wholeNumber(env, "PLAYNC_SERVER_ID", 2301),
+      minRequestGapMs: wholeNumber(env, "PLAYNC_MIN_REQUEST_GAP_MS", 2000),
+    },
     aion2index: {
       apiKey: text(env, "AION2INDEX_API_KEY", null),
       baseUrl: trimEndSlashes(text(env, "AION2INDEX_BASE_URL", "https://aion2index.com/api/v1/characters")),
