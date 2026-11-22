@@ -76,6 +76,7 @@ module.exports = {
         charName: decision.character?.name ?? decision.nickname,
         characterId: decision.character?.characterId ?? null,
         legion: decision.character?.legion ?? null,
+        manualRoles: decision.rolesChosen ? decision.outcome : null,
         confirmed: decision.confirmed,
       });
       if (saved) {

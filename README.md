@@ -168,7 +168,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the `/badword` trigger words and reaction, and the leaderboard name. See [step 6](#6-pick-the-verification-roles). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
-| `/rename-members user` | Set nicknames back to the in-game names of verified members. Pick a `user` for one member, or leave it empty for everyone. | Manage Nicknames |
+| `/recheck user` | Look verified members up again: fix their nicknames, and move them between the Guild and Trusted roles and Guest if they joined or left the legion. Pick a `user` for one member, or leave it empty for everyone. See [Rechecking members](#rechecking-members). | Manage Roles |
 | `/unverify user` | Remove a member's character and their Guild, Trusted, Guest and class roles, so the character can be verified by someone else | Manage Roles |
 | `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
 | `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
@@ -189,9 +189,22 @@ Members click **Verify** under the message from `/verify-setup` and type their c
 - **Already linked to someone else:** changes nothing and tells them to contact a mod. Each character can only belong to one Discord account. Use `/unverify` on the other account to free it.
 - **The lookup sites aren't answering:** changes nothing and asks them to try again in a few minutes.
 
-Verifying again with another character replaces the old one, and the roles and nickname follow the new character. The bot saves each member's character, so `/rename-members` can fix nicknames later (for example after someone renames their character in game, or changes their nickname by hand).
+Verifying again with another character replaces the old one, and the roles and nickname follow the new character. The bot saves each member's character, so `/recheck` can update them later.
 
-**`/rename-members`** only changes nicknames, never roles. Without a `user`, it goes through every verified member, about 4 seconds each, and posts a summary in the channel when it's done. Members who verified with a name that wasn't found on Israphel are skipped. If a character isn't found any more (renamed or deleted in game), the summary lists them: they need to verify again with their new name.
+### Rechecking members
+
+`/recheck` looks each verified member's character up again and:
+
+- **Fixes their nickname** if it doesn't match the in-game name any more (they renamed their character with a different spelling, or changed their nickname by hand).
+- **Left the legion:** takes the Guild and Trusted roles away and gives them Guest.
+- **Joined the legion:** takes Guest away and gives them Guild and Trusted.
+- **Updates their class role**, the same way Verify does.
+
+If a mod picked their roles with `/verify-manual` (for example Guild and Trusted for someone outside the legion), `/recheck` leaves their roles alone and only fixes the nickname. The reply says so. If the member verifies again themselves, their roles follow their legion again.
+
+Pick a `user` to recheck one member: only you see the reply. Without a `user`, it goes through every verified member, about 2 seconds each, and posts a summary in the channel when it's done.
+
+Members who verified with a name that wasn't found on Israphel are skipped. If a character isn't found any more (renamed or deleted in game), nothing is changed for them and the reply or summary says so: they need to verify again with their new name. If the lookup sites don't answer, nothing is changed either. Run it again later.
 
 The bot can't rename the server owner (Discord doesn't allow it), or anyone whose top role is above the bot's role.
 
@@ -209,7 +222,7 @@ If class roles are set in `/settings`, members also get the role for their chara
 `/verify-manual user name` does the same as the Verify button, for another member. Only you see the reply. The optional `roles` picks which roles they get:
 
 - **Auto** (the default): from their character's legion, like the Verify button. If the name isn't found on Israphel, or the lookup sites don't answer, the bot asks you to pick the roles instead.
-- **Guild and Trusted** or **Guest:** they get those roles whatever their legion is. Useful when their character is hidden on the lookup sites, or when the sites are down. If the name couldn't be checked, it's saved as typed, and `/rename-members` skips them.
+- **Guild and Trusted** or **Guest:** they get those roles whatever their legion is. Useful when their character is hidden on the lookup sites, or when the sites are down. If the name couldn't be checked, it's saved as typed, and `/recheck` skips them. If the roles you pick aren't what their legion would give, `/recheck` keeps your choice.
 
 Getting Guild and Trusted takes the Guest role away, and getting Guest takes Guild and Trusted away, even if someone gave those roles by hand.
 

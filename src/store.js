@@ -1,11 +1,12 @@
 // The bot's database: which character each verified member linked, plus the ticket, voice and /badword tables.
+//   addManualRolesColumn        adds the column for mod-picked roles to databases made before it existed
 //   openStore                   opens (or creates) the database file and returns the functions below, the ticket, voice and /badword ones
 //   getVerification             a member's saved character
 //   findClaimOwner              which member a character is linked to, by character ID or confirmed name
-//   saveVerification            links a character to a member, replacing their old one; false if someone else has it
+//   saveVerification            links a character to a member, replacing their old one (and any mod-picked roles); false if someone else has it
 //   removeVerification          unlinks a member's character
 //   listConfirmedVerifications  every member whose character was found on the server
-//   updateCharacterName         saves a character's new spelling after a rename
+//   updateCharacter             saves a character's current name and legion after /recheck; false if someone else has that name
 //   getServerSettings           the roles admins picked with /settings, by their old .env name
 //   setServerSetting            saves one of those settings, or removes it when the value is empty
 //   importServerSettingsOnce    copies settings from the old .env lines the first time only; null after that
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS verifications (
   char_name_lower  TEXT NOT NULL,
   character_id     TEXT,
   legion           TEXT,
+  manual_roles     TEXT,
   confirmed        INTEGER NOT NULL,
   verified_at      INTEGER NOT NULL,
   updated_at       INTEGER NOT NULL
@@ -56,12 +58,18 @@ function isUniqueError(error) {
   return error?.code === "SQLITE_CONSTRAINT_UNIQUE";
 }
 
+function addManualRolesColumn(db) {
+  const columns = db.prepare("PRAGMA table_info(verifications)").all().map((row) => row.name);
+  if (!columns.includes("manual_roles")) db.exec("ALTER TABLE verifications ADD COLUMN manual_roles TEXT");
+}
+
 function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
   if (dbPath !== ":memory:") fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  addManualRolesColumn(db);
   db.exec(TICKET_SCHEMA);
   db.exec(VOICE_SCHEMA);
   db.exec(BAD_WORD_SCHEMA);
@@ -74,22 +82,23 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
     ),
     upsert: db.prepare(`
       INSERT INTO verifications
-        (discord_id, char_name, char_name_lower, character_id, legion, confirmed, verified_at, updated_at)
+        (discord_id, char_name, char_name_lower, character_id, legion, manual_roles, confirmed, verified_at, updated_at)
       VALUES
-        (@discordId, @charName, @charNameLower, @characterId, @legion, @confirmed, @now, @now)
+        (@discordId, @charName, @charNameLower, @characterId, @legion, @manualRoles, @confirmed, @now, @now)
       ON CONFLICT (discord_id) DO UPDATE SET
         char_name = excluded.char_name,
         char_name_lower = excluded.char_name_lower,
         character_id = excluded.character_id,
         legion = excluded.legion,
+        manual_roles = excluded.manual_roles,
         confirmed = excluded.confirmed,
         verified_at = excluded.verified_at,
         updated_at = excluded.updated_at
     `),
     remove: db.prepare("DELETE FROM verifications WHERE discord_id = ?"),
     listConfirmed: db.prepare("SELECT * FROM verifications WHERE confirmed = 1 ORDER BY verified_at"),
-    rename: db.prepare(
-      "UPDATE verifications SET char_name = ?, char_name_lower = ?, updated_at = ? WHERE discord_id = ?"
+    updateCharacter: db.prepare(
+      "UPDATE verifications SET char_name = ?, char_name_lower = ?, legion = ?, updated_at = ? WHERE discord_id = ?"
     ),
     serverSettings: db.prepare("SELECT key, value FROM server_settings"),
     serverSetting: db.prepare("SELECT value FROM server_settings WHERE key = ?"),
@@ -125,6 +134,7 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
       charNameLower: row.charName.toLowerCase(),
       characterId: row.confirmed ? row.characterId ?? null : null,
       legion: row.legion ?? null,
+      manualRoles: row.manualRoles ?? null,
       confirmed: row.confirmed ? 1 : 0,
       now: Date.now(),
     });
@@ -147,9 +157,9 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
     },
     removeVerification: (discordId) => statements.remove.run(discordId).changes > 0,
     listConfirmedVerifications: () => statements.listConfirmed.all(),
-    updateCharacterName(discordId, name) {
+    updateCharacter(discordId, { name, legion }) {
       try {
-        return statements.rename.run(name, name.toLowerCase(), Date.now(), discordId).changes > 0;
+        return statements.updateCharacter.run(name, name.toLowerCase(), legion ?? null, Date.now(), discordId).changes > 0;
       } catch (error) {
         if (isUniqueError(error)) return false;
         throw error;

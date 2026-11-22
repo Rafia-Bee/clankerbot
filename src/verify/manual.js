@@ -14,8 +14,16 @@ function decideManual({ typedName, result, roles, claimOwnerId = null, discordId
   if (result.status === "found") {
     const { character } = result;
     if (claimOwnerId && claimOwnerId !== discordId) return { outcome: "taken", character, ownerId: claimOwnerId };
-    const outcome = roles === "auto" ? (sameLegion(character.legion, legion) ? "guild" : "guest") : roles;
-    return { outcome, character, nickname: nicknameFor(character.name), confirmed: true, stale: result.stale };
+    const legionOutcome = sameLegion(character.legion, legion) ? "guild" : "guest";
+    const outcome = roles === "auto" ? legionOutcome : roles;
+    return {
+      outcome,
+      character,
+      nickname: nicknameFor(character.name),
+      confirmed: true,
+      stale: result.stale,
+      rolesChosen: outcome !== legionOutcome,
+    };
   }
 
   const reason = result.status === "not_found" ? "not_found" : "unavailable";
@@ -46,10 +54,10 @@ function manualMessage(decision, { member, legion, serverName, maxNameLength }) 
         parts.push(`The game wasn't answering, so this used saved data from ${from}.`);
       }
       if (decision.reason === "not_found") {
-        parts.push(`That name wasn't found on ${serverName}, so it was saved as typed and /rename-members will skip them.`);
+        parts.push(`That name wasn't found on ${serverName}, so it was saved as typed and /recheck will skip them.`);
       }
       if (decision.reason === "unavailable") {
-        parts.push("The lookup sites didn't answer, so the name was saved as typed and /rename-members will skip them.");
+        parts.push("The lookup sites didn't answer, so the name was saved as typed and /recheck will skip them.");
       }
       return parts.join(" ");
     }

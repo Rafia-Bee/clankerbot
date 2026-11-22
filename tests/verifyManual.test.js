@@ -18,6 +18,7 @@ test("auto uses the character's legion", () => {
     nickname: "KFC",
     confirmed: true,
     stale: false,
+    rolesChosen: false,
   });
   assert.equal(decide(found({ legion: "Aegis" })).outcome, "guest");
 });
@@ -25,6 +26,13 @@ test("auto uses the character's legion", () => {
 test("a picked role wins over the legion", () => {
   assert.equal(decide(found({ legion: "Aegis" }), "guild").outcome, "guild");
   assert.equal(decide(found(), "guest").outcome, "guest");
+});
+
+test("a picked role only counts as the mod's choice when the legion would give something else", () => {
+  assert.equal(decide(found({ legion: "Aegis" }), "guild").rolesChosen, true);
+  assert.equal(decide(found(), "guest").rolesChosen, true);
+  assert.equal(decide(found(), "guild").rolesChosen, false);
+  assert.equal(decide(found({ legion: "Aegis" }), "guest").rolesChosen, false);
 });
 
 test("older saved data is used, and marked", () => {
@@ -82,11 +90,11 @@ test("replies to the mod", () => {
   );
   assert.equal(
     message(decide({ status: "not_found" }, "guild")),
-    "Verified <@100> as **kfc** with the Guild and Trusted roles. That name wasn't found on Israphel, so it was saved as typed and /rename-members will skip them."
+    "Verified <@100> as **kfc** with the Guild and Trusted roles. That name wasn't found on Israphel, so it was saved as typed and /recheck will skip them."
   );
   assert.equal(
     message(decide({ status: "unavailable" }, "guest")),
-    "Verified <@100> as **kfc** with the Guest role. The lookup sites didn't answer, so the name was saved as typed and /rename-members will skip them."
+    "Verified <@100> as **kfc** with the Guest role. The lookup sites didn't answer, so the name was saved as typed and /recheck will skip them."
   );
   assert.equal(
     message(decide(found(), "auto", "200")),

@@ -1,6 +1,10 @@
 // Tests for the saved characters in the database.
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const Database = require("better-sqlite3");
 const { openStore } = require("../src/store");
 
 const kfc = (extra = {}) => ({
@@ -84,9 +88,43 @@ test("lists confirmed verifications only", () => {
   );
 });
 
-test("updates the saved name after a rename", () => {
+test("updates the saved name and legion after a recheck", () => {
   store.saveVerification(kfc());
-  store.updateCharacterName("100", "Kfc");
-  assert.equal(store.getVerification("100").char_name, "Kfc");
+  assert.equal(store.updateCharacter("100", { name: "Kfc", legion: "Aegis" }), true);
+  const saved = store.getVerification("100");
+  assert.equal(saved.char_name, "Kfc");
+  assert.equal(saved.legion, "Aegis");
   assert.equal(store.findClaimOwner({ characterId: null, name: "kfc" }), "100");
+});
+
+test("a recheck rename to a name someone else has is refused", () => {
+  store.saveVerification(kfc());
+  store.saveVerification(kfc({ discordId: "200", charName: "Other", characterId: "zzz=" }));
+  assert.equal(store.updateCharacter("200", { name: "kfc", legion: null }), false);
+  assert.equal(store.getVerification("200").char_name, "Other");
+});
+
+test("remembers roles a mod picked by hand until the member verifies again", () => {
+  store.saveVerification(kfc({ manualRoles: "guild" }));
+  assert.equal(store.getVerification("100").manual_roles, "guild");
+  store.updateCharacter("100", { name: "KFC", legion: "Aegis" });
+  assert.equal(store.getVerification("100").manual_roles, "guild");
+  store.saveVerification(kfc());
+  assert.equal(store.getVerification("100").manual_roles, null);
+});
+
+test("an older database gets the column for mod-picked roles", () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "clanker-")), "old.db");
+  const old = new Database(file);
+  old.exec(`CREATE TABLE verifications (
+    discord_id TEXT PRIMARY KEY, char_name TEXT NOT NULL, char_name_lower TEXT NOT NULL, character_id TEXT,
+    legion TEXT, confirmed INTEGER NOT NULL, verified_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`);
+  old.prepare("INSERT INTO verifications VALUES ('100', 'KFC', 'kfc', 'abc=', 'Entropy', 1, 1, 1)").run();
+  old.close();
+
+  const upgraded = openStore(file);
+  assert.equal(upgraded.getVerification("100").manual_roles, null);
+  upgraded.saveVerification(kfc({ manualRoles: "guest" }));
+  assert.equal(upgraded.getVerification("100").manual_roles, "guest");
+  upgraded.close();
 });
