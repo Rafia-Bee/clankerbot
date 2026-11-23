@@ -2,6 +2,7 @@
 // Also starts the hourly ticket cleanup and marks tickets deleted when their channel is deleted by hand.
 // Runs the voice hubs: members who join one get their own voice channel (see voice/hub.js).
 // Watches chat for the /badword trigger words (see badwords/chat.js), without keeping chat messages in memory.
+// Gives the streaming role to members while they're live on Twitch (see streaming/role.js).
 //   checkSettings      stops the bot with a clear message when a setting is missing or wrong, copies old role lines
 //                      from .env into the database once, and warns when verification roles aren't picked yet
 //   loadCommands       reads every command file in src/commands, and which buttons each one handles
@@ -20,6 +21,7 @@ const { handleTicketComponent } = require("./tickets/interactions");
 const { startTicketCleanup } = require("./tickets/cleanup");
 const { createVoiceHubs } = require("./voice/hub");
 const { handleBadWordMessage } = require("./badwords/chat");
+const { createStreamingRole } = require("./streaming/role");
 
 function checkSettings() {
   const missing = missingSettings(process.env, ["BOT_TOKEN"]);
@@ -93,17 +95,21 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
   ],
   makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 0 }),
 });
 const { commands, componentHandlers } = loadCommands();
 componentHandlers.set("ticket", handleTicketComponent);
 const voiceHubs = createVoiceHubs(client);
+const streamingRole = createStreamingRole(client);
 
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
   startTicketCleanup(client);
   voiceHubs.checkOnStartup().catch((error) => console.error("Voice hub startup check failed:", error));
+  streamingRole.checkOnStartup().catch((error) => console.error("Streaming role startup check failed:", error));
 });
 
 client.on("channelDelete", (channel) => {
@@ -113,6 +119,10 @@ client.on("channelDelete", (channel) => {
 
 client.on("voiceStateUpdate", (oldState, newState) => {
   voiceHubs.handleVoiceUpdate(oldState, newState).catch((error) => console.error("Voice update failed:", error));
+});
+
+client.on("presenceUpdate", (oldPresence, newPresence) => {
+  streamingRole.handlePresence(oldPresence, newPresence).catch((error) => console.error("Streaming role update failed:", error));
 });
 
 client.on("messageCreate", (message) => {

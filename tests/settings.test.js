@@ -140,6 +140,16 @@ test("the leaderboard name: optional, shown as itself, or the default when empty
   assert.deepEqual(importsFromEnv({ BAD_WORD_LEADERBOARD_TITLE: "x" }), []);
 });
 
+test("the streaming role: optional, a role, and checked for problems like the others", () => {
+  const role = settingByKey("STREAMING_ROLE_ID");
+  assert.equal(role.required, false);
+  assert.equal(role.kind, "role");
+  assert.equal(describeValue(role, "7"), "<@&7>");
+  const guild = { hasRole: () => false, canGiveRole: () => false };
+  assert.deepEqual(findProblems({ STREAMING_ROLE_ID: "7" }, guild), ["Streaming role: the role was deleted."]);
+  assert.deepEqual(missingRequired({}).map((s) => s.key), ["GUILD_ROLE_ID", "TRUSTED_ROLE_ID", "GUEST_ROLE_ID"]);
+});
+
 test("server settings in the database", async (t) => {
   const store = openStore(":memory:");
   t.after(() => store.close());

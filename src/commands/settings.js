@@ -1,4 +1,4 @@
-// /settings: lets server admins pick the verification roles from Discord's own role picker, and the /badword trigger words, reaction and leaderboard name.
+// /settings: lets server admins pick the verification and streaming roles from Discord's own role picker, and the /badword trigger words, reaction and leaderboard name.
 //   guildChecks      what findProblems needs to know about the server (does a role exist, can the bot give it)
 //   mainView         the overview: every setting, what's missing, problems, and a list to pick one to change
 //   roleView         one role's screen: a role picker and Back
@@ -364,7 +364,7 @@ async function handleComponent(interaction) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("settings")
-    .setDescription("Pick the verification roles, and the /badword trigger words, reaction and leaderboard name")
+    .setDescription("Pick the verification and streaming roles, and the /badword words, reaction and leaderboard name")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   customIdPrefix: PREFIX,
   handleComponent,

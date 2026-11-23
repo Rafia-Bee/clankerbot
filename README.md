@@ -1,6 +1,6 @@
 # Clanker
 
-A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system, "Create a VC" voice hubs and role buttons, and can also look characters up, post polls and delete recent messages.
+A Discord bot for my guild server. Members verify with their AION 2 character to get their roles and nickname. It has a ticket system, "Create a VC" voice hubs, role buttons and a role for members who are live on Twitch, and can also look characters up, post polls and delete recent messages.
 
 ## What you need
 
@@ -31,7 +31,13 @@ npm install
 
 Already invited the bot without some of these? Add them to the bot's role in **Server Settings → Roles** instead.
 
-On the **Bot** tab, under "Privileged Gateway Intents", turn on **Message Content Intent** and click **Save Changes**. This lets the bot read chat for the [trigger words](#counting-bad-words). Leave the other switches off. If this switch is off, the bot won't start.
+On the **Bot** tab, under "Privileged Gateway Intents", turn on all three switches and click **Save Changes**:
+
+- **Message Content Intent** lets the bot read chat for the [trigger words](#counting-bad-words).
+- **Presence Intent** lets the bot see when someone is live on Twitch, for the [streaming role](#streaming-role).
+- **Server Members Intent** lets the bot look through the member list when it starts, to fix the streaming role for anyone who started or stopped streaming while it was off.
+
+If any of these are off, the bot won't start.
 
 ### 3. Fill in the settings
 
@@ -51,7 +57,7 @@ Everything else in `.env.example` already has a sensible value. Copy those lines
 
 ### 4. Set up your server
 
-In **Server Settings → Roles**, drag the bot's role **above** the Guild, Trusted and Guest roles, and the class roles if you use them. Discord only lets a bot give out roles that are below its own, and only rename members whose top role is below its own.
+In **Server Settings → Roles**, drag the bot's role **above** the Guild, Trusted and Guest roles, and the class roles and streaming role if you use them. Discord only lets a bot give out roles that are below its own, and only rename members whose top role is below its own.
 
 ### 5. Register the commands and start the bot
 
@@ -76,6 +82,7 @@ Run `/settings` in Discord. Only server admins (people with **Manage Server**) c
 | Trusted role | Given together with the Guild role |
 | Guest role | Given to everyone else who verifies |
 | Class roles | *(optional)* A role for each class. See [Class roles](#class-roles). |
+| Streaming role | *(optional)* Given to members while they're live on Twitch. See [Streaming role](#streaming-role). |
 
 Until the Guild, Trusted and Guest roles are picked, verification is off: the Verify button, `/verify-setup` and `/verify-manual` say so. The rest of the bot works as normal.
 
@@ -165,7 +172,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
-| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the `/badword` trigger words and reaction, and the leaderboard name. See [step 6](#6-pick-the-verification-roles). | Manage Server |
+| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the [streaming role](#streaming-role), the `/badword` trigger words and reaction, and the leaderboard name. See [step 6](#6-pick-the-verification-roles). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/recheck user` | Look verified members up again: fix their nicknames, and move them between the Guild and Trusted roles and Guest if they joined or left the legion. Pick a `user` for one member, or leave it empty for everyone. See [Rechecking members](#rechecking-members). | Manage Roles |
@@ -348,6 +355,24 @@ Some roles can't go on a button, and the bot tells you why:
 
 The buttons keep working after the bot restarts. To remove one, delete its message. If the role is deleted, the button tells members to contact a mod.
 
+## Streaming role
+
+Members who are live on Twitch get a role, so they show at the top of the member list while they stream. It's taken away when they stop.
+
+To set it up:
+
+1. In **Server Settings → Roles**, click **Create Role** and name it, say, "Currently Streaming". Give it a colour.
+2. In the role's settings, turn on **Display role members separately from online members**. This is what puts streamers in their own group in the member list.
+3. Drag the role to the **top** of the list, above every other role that's shown separately. Then drag the bot's role above it, since the bot can only give out roles below its own.
+4. Run `/settings`, pick **Streaming role** and pick the role you made.
+
+How it works:
+
+- The bot watches members' Discord status. When it says "Streaming" with a Twitch link, they get the role. Other kinds of streams (like YouTube) don't count.
+- Discord only shows that status if the member has linked Twitch in **User Settings → Connections** and has **Display on profile** turned on there. It can take a minute after going live for Discord to notice.
+- When the bot starts, it checks everyone and fixes the role for anyone who started or stopped streaming while it was off. That also means it takes the role away from anyone who was given it by hand but isn't streaming.
+- Leave the setting empty to turn this off.
+
 ## Polls
 
 `/poll` posts a normal Discord poll, so voting and results work like any poll in Discord.
@@ -420,7 +445,8 @@ The official site needs no key. It's the same data NCSOFT's own character page s
 - **"Problem with the lookup settings in .env":** the message says which setting. Usually `AION2INDEX_API_KEY` is empty.
 - **`/whois` always says "I couldn't reach any of the lookup sites":** check the bot's log for the reason. "API key rejected" means the aion2index key is wrong or was revoked in the aion2index panel. If the official site keeps failing, NCSOFT may have changed it: set `LOOKUP_SOURCES=aion2index,shugo` until it's fixed.
 - **`/whois` says a character doesn't exist, but it does:** check the spelling. A name that one site can't find is still asked on the others.
-- **The bot won't start and the log says "Used disallowed intents":** turn on **Message Content Intent** on the **Bot** tab in the Developer Portal (setup step 2), then start the bot again.
+- **The bot won't start and the log says "Used disallowed intents":** turn on **Message Content Intent**, **Presence Intent** and **Server Members Intent** on the **Bot** tab in the Developer Portal (setup step 2), then start the bot again.
+- **Someone is live but didn't get the streaming role:** check their Discord profile says "Streaming" with a Twitch link. If not, they need to link Twitch in **User Settings → Connections**. If it does, open `/settings` and read the **Problems** list: usually the bot's role needs to be above the streaming role.
 - **Trigger words don't add to the count:** check the word is in `/settings` under **Trigger words**, and that it's said as a whole word. If the count goes up but there's no reaction, give the bot's role **Add Reactions** and **Read Message History** in that channel.
 - **Invalid token:** reset it in the Developer Portal and update `BOT_TOKEN`.
 
