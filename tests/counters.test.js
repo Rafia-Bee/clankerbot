@@ -102,6 +102,13 @@ test("taking 1 off stops at 0, and reset goes back to 0", () => {
   assert.deepEqual(store.getLeaderboard(counter.id, 10), []);
 });
 
+test("taking off more than 1 at once still stops at 0", () => {
+  const counter = store.createCounter("1", "Bad words");
+  store.addToCount(counter.id, "100", 5);
+  assert.equal(store.takeFromCount(counter.id, "100", 3), 2);
+  assert.equal(store.takeFromCount(counter.id, "100", 10), 0);
+});
+
 test("the leaderboard lists one counter's members from highest down, up to the limit", () => {
   const deaths = store.createCounter("1", "Deaths");
   const other = store.createCounter("1", "Other");
@@ -208,6 +215,8 @@ test("replies name the member, the counter and the count", () => {
   assert.equal(countReply(deaths, "100", 7), "<@100>'s **Raid deaths** count is 7.");
   assert.equal(removedReply(deaths, "100", 2, 1), "Took 1 off <@100>'s **Raid deaths** count. It's now 1.");
   assert.equal(removedReply(deaths, "100", 0, 0), "<@100>'s **Raid deaths** count is already 0.");
+  assert.equal(removedReply(deaths, "100", 8, 5), "Took 3 off <@100>'s **Raid deaths** count. It's now 5.");
+  assert.equal(removedReply(deaths, "100", 2, 0), "Took 2 off <@100>'s **Raid deaths** count. It's now 0.");
   assert.equal(resetReply(deaths, "100"), "Reset <@100>'s **Raid deaths** count to 0.");
 });
 

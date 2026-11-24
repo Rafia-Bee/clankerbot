@@ -1,7 +1,7 @@
 // The replies for /count, kept apart from Discord so they can be tested.
 //   addedReply             the reply after adding to a member's count
 //   countReply             the reply showing a member's count
-//   removedReply           the reply after taking 1 off, or saying it was already 0
+//   removedReply           the reply after taking from a count, or saying it was already 0
 //   resetReply             the reply after putting a count back to 0
 //   noCounterReply         the reply when the typed counter doesn't exist
 //   rankRows               gives each row its place, with equal counts sharing a place (1, 1, 3)
@@ -21,7 +21,7 @@ function countReply(counter, userId, count) {
 
 function removedReply(counter, userId, before, count) {
   if (before === 0) return `<@${userId}>'s **${counter.name}** count is already 0.`;
-  return `Took 1 off <@${userId}>'s **${counter.name}** count. It's now ${count}.`;
+  return `Took ${before - count} off <@${userId}>'s **${counter.name}** count. It's now ${count}.`;
 }
 
 function resetReply(counter, userId) {

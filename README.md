@@ -182,7 +182,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/count add counter user amount` | Add to `user`'s count on a counter: 1, or `amount` (up to 100) if you fill it in. Everyone starts at 0. See [Counters](#counters). | Anyone |
 | `/count show counter user` | Show `user`'s count on a counter. | Anyone |
 | `/count leaderboard counter` | Show the 10 members with the highest counts on a counter, ranked. | Anyone |
-| `/count remove counter user` | Take 1 off `user`'s count on a counter. It never goes below 0. | Manage Server |
+| `/count remove counter user amount` | Take 1, or `amount` (up to 100), off `user`'s count on a counter. It never goes below 0. | Manage Server |
 | `/count reset counter user` | Put `user`'s count on a counter back to 0. | Manage Server |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
@@ -404,7 +404,7 @@ Each counter has:
 - `/count add` adds 1 to a member's count. Anyone can use it. To add more at once (say they swore 3 times), fill in `amount`, up to 100.
 - `/count show` shows a member's count.
 - `/count leaderboard` shows the 10 members with the highest counts, highest first. Members with the same count share a place (so you might see #1, #1, #3). Names show without pinging anyone.
-- `/count remove` takes 1 off, and `/count reset` puts a member back to 0. Only people with **Manage Server** can use these two.
+- `/count remove` takes 1 off (or `amount`, to fix a mistake), and `/count reset` puts a member back to 0. Only people with **Manage Server** can use these two.
 
 **Making and changing counters:** run `/settings` and choose **Counters** from the list.
 

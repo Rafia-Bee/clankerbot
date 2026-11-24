@@ -9,7 +9,7 @@
 //   updateCounter        changes a counter's name, words, emoji or leaderboard name; false when the new name is taken
 //   deleteCounter        deletes a counter and its counts
 //   addToCount           adds to a member's count (1 unless told otherwise) and returns the new count
-//   takeFromCount        takes 1 off a member's count, never below 0, and returns the new count
+//   takeFromCount        takes from a member's count (1 unless told otherwise), never below 0, and returns the new count
 //   resetCount           puts a member's count back to 0
 //   getCount             a member's count, 0 if they've never been given one
 //   getLeaderboard       a counter's highest counts, highest first (ties: who got there first)
@@ -76,7 +76,7 @@ function createCounterStore(db) {
       RETURNING count
     `),
     takeOne: db.prepare(`
-      UPDATE counter_counts SET count = MAX(count - 1, 0), updated_at = ?
+      UPDATE counter_counts SET count = MAX(count - ?, 0), updated_at = ?
       WHERE counter_id = ? AND user_id = ?
       RETURNING count
     `),
@@ -197,7 +197,7 @@ function createCounterStore(db) {
     },
     deleteCounter: (guildId, id) => s.remove.run(guildId, id).changes > 0,
     addToCount: (counterId, userId, amount = 1) => s.add.get(counterId, userId, amount, Date.now()).count,
-    takeFromCount: (counterId, userId) => s.takeOne.get(Date.now(), counterId, userId)?.count ?? 0,
+    takeFromCount: (counterId, userId, amount = 1) => s.takeOne.get(amount, Date.now(), counterId, userId)?.count ?? 0,
     resetCount: (counterId, userId) => {
       s.reset.run(counterId, userId);
     },
