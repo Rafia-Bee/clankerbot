@@ -1,4 +1,4 @@
-// The settings admins pick with /settings (verification roles, the streaming role, /badword trigger words, reaction and leaderboard name), and the rules around them.
+// The settings admins pick with /settings (verification roles, the streaming role and the /count counters), and the rules around them.
 //   SETTINGS            every setting: its key (the old .env name for roles), label, kind, and whether it's required
 //   settingByKey        finds a setting by its key
 //   importsFromEnv      the roles found in the old .env lines, ready to copy into the database
@@ -6,11 +6,9 @@
 //   missingRequired     the required roles that aren't set
 //   toConfigFields      turns saved values into the role fields verification reads
 //   findProblems        deleted roles, and roles the bot can't give out
-//   describeValue       a setting's value as Discord mentions, words, an emoji or text, or "not set"
+//   describeValue       a setting's value as Discord mentions or counter names, or "not set"
 //   addRoleMapEntry     adds or replaces a class in the class role list
 //   removeRoleMapEntry  removes a class from the class role list
-
-const { DEFAULT_LEADERBOARD_TITLE } = require("../badwords/messages");
 
 const SETTINGS = [
   { key: "GUILD_ROLE_ID", label: "Guild role", kind: "role", required: true, help: "Given, with the Trusted role, to members whose character is in the guild's legion." },
@@ -18,9 +16,7 @@ const SETTINGS = [
   { key: "GUEST_ROLE_ID", label: "Guest role", kind: "role", required: true, help: "Given to everyone else who verifies: other legions, no legion, or a name not found on the server." },
   { key: "CLASS_ROLES", label: "Class roles", kind: "roleMap", entryName: "Class", help: "Each class and its role: Gladiator, Templar, Assassin, Ranger, Sorcerer, Spiritmaster, Cleric, Chanter." },
   { key: "STREAMING_ROLE_ID", label: "Streaming role", kind: "role", required: false, help: "Given to members while they're live on Twitch, and taken away when they stop." },
-  { key: "BAD_WORDS", label: "Trigger words", kind: "words", required: false, help: "Saying one of these words in chat adds 1 to that person's /badword count. Capitals don't matter." },
-  { key: "BAD_WORD_REACTION", label: "Trigger word reaction", kind: "emoji", required: false, help: "The emoji the bot reacts with when someone says a trigger word." },
-  { key: "BAD_WORD_LEADERBOARD_TITLE", label: "Leaderboard name", kind: "text", required: false, help: "The name shown at the top of /badword-leaderboard, like Naughty List." },
+  { key: "COUNTERS", label: "Counters", kind: "counters", required: false, help: "Make and change the /count counters: their trigger words, reaction emoji and leaderboard name." },
 ];
 
 const ID = /^\d+$/;
@@ -96,14 +92,9 @@ function findProblems(values, guild) {
 }
 
 function describeValue(setting, value) {
-  if (isEmpty(value)) {
-    if (setting.kind === "emoji") return "not set, so the default check mark is used";
-    if (setting.kind === "text") return `not set, so "${DEFAULT_LEADERBOARD_TITLE}" is used`;
-    return "not set";
-  }
+  if (isEmpty(value)) return setting.kind === "counters" ? "none yet" : "not set";
   if (setting.kind === "role") return `<@&${value}>`;
-  if (setting.kind === "words") return value.join(", ");
-  if (setting.kind === "emoji" || setting.kind === "text") return value;
+  if (setting.kind === "counters") return value.join(", ");
   return value.map(({ name, roleId }) => `${name} → <@&${roleId}>`).join("\n");
 }
 

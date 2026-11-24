@@ -1,7 +1,7 @@
-// The emoji the bot reacts with when a message has a /badword trigger word, picked in /settings.
+// The emoji the bot reacts with when a message has one of a counter's trigger words, picked per counter in /settings.
 //   DEFAULT_REACTION    the check mark used when no emoji is picked
 //   parseReactionEmoji  checks typed text is one emoji (normal or custom) and returns it; null when empty
-//   reactionFor         the emoji to react with, from the saved settings
+//   reactionFor         the emoji a counter reacts with
 //   canUseEmoji         whether the bot can react with it: normal emojis always, server emojis if the bot
 //                       already knows them or Discord finds them (for emojis added after the bot started)
 
@@ -23,8 +23,8 @@ function parseReactionEmoji(raw) {
   );
 }
 
-function reactionFor(settings) {
-  return settings.BAD_WORD_REACTION || DEFAULT_REACTION;
+function reactionFor(counter) {
+  return counter.reaction || DEFAULT_REACTION;
 }
 
 async function canUseEmoji(emoji, { known, lookUp }) {

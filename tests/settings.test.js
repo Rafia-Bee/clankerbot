@@ -19,7 +19,7 @@ test("every setting has a unique key, a label and a known kind", () => {
   assert.equal(new Set(keys).size, keys.length);
   for (const setting of SETTINGS) {
     assert.ok(setting.label, setting.key);
-    assert.ok(["role", "roleMap", "words", "emoji", "text"].includes(setting.kind), setting.key);
+    assert.ok(["role", "roleMap", "counters"].includes(setting.kind), setting.key);
   }
 });
 
@@ -112,32 +112,16 @@ test("class roles: adding replaces the same name, removing drops it", () => {
   assert.throws(() => addRoleMapEntry([], "Ranger:x", "1"), /name/);
 });
 
-test("trigger words: shown as a list, never a problem, and not read from .env", () => {
-  const words = settingByKey("BAD_WORDS");
-  assert.equal(words.required, false);
-  assert.equal(describeValue(words, ["hello", "good game"]), "hello, good game");
-  assert.equal(describeValue(words, []), "not set");
-  assert.deepEqual(findProblems({ BAD_WORDS: ["hello"] }, { hasRole: () => false, canGiveRole: () => false }), []);
-  assert.deepEqual(importsFromEnv({ BAD_WORDS: "hello" }), []);
+test("counters: one entry listing the counter names, never a problem, and not read from .env", () => {
+  const counters = settingByKey("COUNTERS");
+  assert.equal(counters.required, false);
+  assert.equal(counters.kind, "counters");
+  assert.equal(describeValue(counters, ["Bad words", "Raid deaths"]), "Bad words, Raid deaths");
+  assert.equal(describeValue(counters, []), "none yet");
+  assert.deepEqual(findProblems({ COUNTERS: ["x"] }, { hasRole: () => false, canGiveRole: () => false }), []);
+  assert.deepEqual(importsFromEnv({ COUNTERS: "x" }), []);
+  for (const old of ["BAD_WORDS", "BAD_WORD_REACTION", "BAD_WORD_LEADERBOARD_TITLE"]) assert.equal(settingByKey(old), null);
   assert.deepEqual(missingRequired({}).map((s) => s.key), ["GUILD_ROLE_ID", "TRUSTED_ROLE_ID", "GUEST_ROLE_ID"]);
-});
-
-test("the reaction emoji: optional, shown as itself, or the default when empty", () => {
-  const reaction = settingByKey("BAD_WORD_REACTION");
-  assert.equal(reaction.required, false);
-  assert.equal(describeValue(reaction, "<:pepe:1>"), "<:pepe:1>");
-  assert.match(describeValue(reaction, null), /default/);
-  assert.deepEqual(findProblems({ BAD_WORD_REACTION: "<:pepe:1>" }, { hasRole: () => false, canGiveRole: () => false }), []);
-  assert.deepEqual(importsFromEnv({ BAD_WORD_REACTION: "x" }), []);
-});
-
-test("the leaderboard name: optional, shown as itself, or the default when empty", () => {
-  const title = settingByKey("BAD_WORD_LEADERBOARD_TITLE");
-  assert.equal(title.required, false);
-  assert.equal(title.kind, "text");
-  assert.equal(describeValue(title, "Naughty List"), "Naughty List");
-  assert.match(describeValue(title, null), /Bad word leaderboard/);
-  assert.deepEqual(importsFromEnv({ BAD_WORD_LEADERBOARD_TITLE: "x" }), []);
 });
 
 test("the streaming role: optional, a role, and checked for problems like the others", () => {

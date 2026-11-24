@@ -1,7 +1,8 @@
 // Starts Clanker: checks the settings, loads the slash commands, logs in to Discord and runs commands, buttons and pop-ups.
 // Also starts the hourly ticket cleanup and marks tickets deleted when their channel is deleted by hand.
 // Runs the voice hubs: members who join one get their own voice channel (see voice/hub.js).
-// Watches chat for the /badword trigger words (see badwords/chat.js), without keeping chat messages in memory.
+// Watches chat for the /count counters' trigger words (see counters/chat.js), without keeping chat messages in memory.
+// Suggests choices while someone types a command option that asks for them (like /count's counter).
 // Gives the streaming role to members while they're live on Twitch (see streaming/role.js).
 //   checkSettings      stops the bot with a clear message when a setting is missing or wrong, copies old role lines
 //                      from .env into the database once, and warns when verification roles aren't picked yet
@@ -20,7 +21,7 @@ const { getStore } = require("./store");
 const { handleTicketComponent } = require("./tickets/interactions");
 const { startTicketCleanup } = require("./tickets/cleanup");
 const { createVoiceHubs } = require("./voice/hub");
-const { handleBadWordMessage } = require("./badwords/chat");
+const { handleCounterMessage } = require("./counters/chat");
 const { createStreamingRole } = require("./streaming/role");
 
 function checkSettings() {
@@ -126,7 +127,7 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
 });
 
 client.on("messageCreate", (message) => {
-  handleBadWordMessage(message).catch((error) => console.error("Trigger word check failed:", error));
+  handleCounterMessage(message).catch((error) => console.error("Trigger word check failed:", error));
 });
 
 client.on("error", (error) => {
@@ -147,6 +148,13 @@ client.on("interactionCreate", async (interaction) => {
       console.error(`Button or pop-up ${interaction.customId} failed:`, error);
       await replyWithError(interaction);
     }
+    return;
+  }
+
+  if (interaction.isAutocomplete()) {
+    await commands.get(interaction.commandName)?.autocomplete?.(interaction).catch((error) => {
+      console.error(`Suggestions for /${interaction.commandName} failed:`, error);
+    });
     return;
   }
 

@@ -33,7 +33,7 @@ Already invited the bot without some of these? Add them to the bot's role in **S
 
 On the **Bot** tab, under "Privileged Gateway Intents", turn on all three switches and click **Save Changes**:
 
-- **Message Content Intent** lets the bot read chat for the [trigger words](#counting-bad-words).
+- **Message Content Intent** lets the bot read chat for the [trigger words](#counters).
 - **Presence Intent** lets the bot see when someone is live on Twitch, for the [streaming role](#streaming-role).
 - **Server Members Intent** lets the bot look through the member list when it starts, to fix the streaming role for anyone who started or stopped streaming while it was off.
 
@@ -172,16 +172,18 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
-| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the [streaming role](#streaming-role), the `/badword` trigger words and reaction, and the leaderboard name. See [step 6](#6-pick-the-verification-roles). | Manage Server |
+| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the [streaming role](#streaming-role), and make and change the [counters](#counters). See [step 6](#6-pick-the-verification-roles). | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/recheck user` | Look verified members up again: fix their nicknames, and move them between the Guild and Trusted roles and Guest if they joined or left the legion. Pick a `user` for one member, or leave it empty for everyone. See [Rechecking members](#rechecking-members). | Manage Roles |
 | `/unverify user` | Remove a member's character and their Guild, Trusted, Guest and class roles, so the character can be verified by someone else | Manage Roles |
 | `/whois name` | Look up an AION 2 character on Israphel and post their class, level, gear score, combat power, legion and faction in the channel, with a link to their page | Anyone |
 | `/poll question answers duration multiple` | Post a Discord poll in the channel. See [Polls](#polls). | Anyone |
-| `/badword user` | Add 1 to `user`'s count. Everyone starts at 0. See [Counting with /badword](#counting-bad-words). | Anyone |
-| `/badword-count user` | Show how many `user` has. | Anyone |
-| `/badword-leaderboard` | Show the 10 members with the highest counts, ranked. | Anyone |
+| `/count add counter user amount` | Add to `user`'s count on a counter: 1, or `amount` (up to 100) if you fill it in. Everyone starts at 0. See [Counters](#counters). | Anyone |
+| `/count show counter user` | Show `user`'s count on a counter. | Anyone |
+| `/count leaderboard counter` | Show the 10 members with the highest counts on a counter, ranked. | Anyone |
+| `/count remove counter user` | Take 1 off `user`'s count on a counter. It never goes below 0. | Manage Server |
+| `/count reset counter user` | Put `user`'s count on a counter back to 0. | Manage Server |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
@@ -386,22 +388,36 @@ If something's wrong (one answer, a typo in the duration), only you see the mess
 
 As with any Discord poll, anyone can see who voted for what.
 
-## Counting bad words
+## Counters
 
-Everyone has a count that starts at 0. There are two ways to add to it:
+A counter keeps a count for every member, starting at 0. You can have up to 10, each for something different: one for swear words, one for raid deaths, one for a catchphrase someone keeps saying.
 
-- **By hand:** `/badword user` adds 1 to that member's count.
-- **From chat:** when someone says a trigger word in a message, the bot adds 1 to their own count and reacts to the message (with a check mark, unless you pick another emoji). A message adds 1 at most, however many trigger words it has.
+Each counter has:
 
-`/badword-count user` shows a member's count.
+- **A name**, like "Raid deaths". You pick the counter by this name in every `/count` command. Start typing and Discord suggests the names.
+- **Trigger words** (optional). When someone says one in chat, the bot adds 1 to their own count and reacts to the message. Leave them empty for things the bot can't see in chat, like raid deaths. Then counts only go up with `/count add`.
+- **A reaction emoji** (optional). The check mark is used if you don't pick one.
+- **A leaderboard name** (optional), like "Naughty List". If you don't pick one, it's the counter's name with "leaderboard" after it.
 
-`/badword-leaderboard` shows the 10 members with the highest counts, highest first. Members with the same count share a place (so you might see #1, #1, #3). Names show without pinging anyone.
+**Using counters:**
 
-To rename the leaderboard (say, to "Naughty List"), choose **Leaderboard name** in `/settings` and click **Change name**. **Use the default** goes back to "Bad word leaderboard".
+- `/count add` adds 1 to a member's count. Anyone can use it. To add more at once (say they swore 3 times), fill in `amount`, up to 100.
+- `/count show` shows a member's count.
+- `/count leaderboard` shows the 10 members with the highest counts, highest first. Members with the same count share a place (so you might see #1, #1, #3). Names show without pinging anyone.
+- `/count remove` takes 1 off, and `/count reset` puts a member back to 0. Only people with **Manage Server** can use these two.
 
-To pick the trigger words, run `/settings`, choose **Trigger words** from the list, and click **Add words**. Put `;` between words to add several at once, like `cat; dog; good game`. As that shows, a trigger word can also be a few words. To remove one, pick it from the **Remove a word** list. You can have up to 25.
+**Making and changing counters:** run `/settings` and choose **Counters** from the list.
 
-To change the emoji, choose **Trigger word reaction** in `/settings` and click **Change emoji**. Paste one emoji (on Windows, press the Windows key and `.` to open the emoji picker). For a server's own emoji, type `\:name:` in any Discord chat and send it: Discord shows something like `<:name:123456789>`, which you copy into the box. The bot can only use server emojis from servers it's in. **Use the default** goes back to the check mark.
+- **New counter** asks for a name. Names must be different from each other (capitals don't count as different).
+- Pick a counter from the **Change a counter** list to open it. There you can:
+  - **Add words.** Put `;` between words to add several at once, like `cat; dog; good game`. As that shows, a trigger word can also be a few words. To remove one, pick it from the **Remove a word** list. Each counter can have up to 25.
+  - **Change emoji.** Paste one emoji (on Windows, press the Windows key and `.` to open the emoji picker). For a server's own emoji, type `\:name:` in any Discord chat and send it: Discord shows something like `<:name:123456789>`, which you copy into the box. The bot can only use server emojis from servers it's in. **Use the default emoji** goes back to the check mark.
+  - **Rename** the counter or its leaderboard. Leave the leaderboard name empty to use the default.
+  - **Delete counter.** The bot asks first. Deleting a counter deletes everyone's count on it too.
+
+A message adds 1 at most to each counter, however many of its trigger words it has. If a message has words from two counters, both go up.
+
+**Coming from the old `/badword` commands:** the first time the bot runs with counters, your old counts, trigger words, emoji and leaderboard name move into a counter called "Bad words". Nothing is lost. `/badword`, `/badword-count` and `/badword-leaderboard` are gone; use `/count` with the "Bad words" counter instead.
 
 Trigger words only count as whole words, and capitals don't matter. So if the word is `cat`, then "CAT" and "my cat!" count, but "cats" and "category" don't. Messages from bots don't count.
 
@@ -447,7 +463,8 @@ The official site needs no key. It's the same data NCSOFT's own character page s
 - **`/whois` says a character doesn't exist, but it does:** check the spelling. A name that one site can't find is still asked on the others.
 - **The bot won't start and the log says "Used disallowed intents":** turn on **Message Content Intent**, **Presence Intent** and **Server Members Intent** on the **Bot** tab in the Developer Portal (setup step 2), then start the bot again.
 - **Someone is live but didn't get the streaming role:** check their Discord profile says "Streaming" with a Twitch link. If not, they need to link Twitch in **User Settings → Connections**. If it does, open `/settings` and read the **Problems** list: usually the bot's role needs to be above the streaming role.
-- **Trigger words don't add to the count:** check the word is in `/settings` under **Trigger words**, and that it's said as a whole word. If the count goes up but there's no reaction, give the bot's role **Add Reactions** and **Read Message History** in that channel.
+- **Trigger words don't add to the count:** open the counter in `/settings` under **Counters** and check the word is there, and that it's said as a whole word. If the count goes up but there's no reaction, give the bot's role **Add Reactions** and **Read Message History** in that channel.
+- **`/count` doesn't show up, or the old `/badword` commands are still there:** run `node deploy-commands.js` from your PC (see [Day to day](#day-to-day)). Discord may take a moment to update, or restart your Discord app.
 - **Invalid token:** reset it in the Developer Portal and update `BOT_TOKEN`.
 
 ## License

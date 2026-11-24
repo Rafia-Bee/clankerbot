@@ -1,4 +1,4 @@
-// The trigger words that add to someone's /badword count when they say one in chat.
+// The trigger words that add to someone's count on a counter when they say one in chat.
 //   normalizeWord   lowercases a word and squeezes its spaces
 //   addWord         adds a word to the list, skipping repeats; throws when the word is empty or too long
 //   addWords        adds several words split by ; and checks the list stays within MAX_WORDS
