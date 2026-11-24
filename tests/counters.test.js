@@ -373,3 +373,43 @@ test("a failed lookup counts as not usable", async () => {
   };
   assert.equal(await canUseEmoji("<:x:7>", { known: () => false, lookUp }), false);
 });
+
+const { counterChanges } = require("../src/counters/rules");
+const { describeCounter } = require("../src/counters/messages");
+
+test("typed counter options turn into only the changes that were filled in", () => {
+  const counter = { name: "Deaths", words: ["rip"], reaction: null, leaderboardTitle: null };
+  assert.deepEqual(counterChanges(counter, {}), {});
+  assert.deepEqual(counterChanges(counter, { name: " Raid  deaths ", emoji: " \u{1F480} ", leaderboard: "Graveyard" }), {
+    name: "Raid deaths",
+    reaction: "\u{1F480}",
+    leaderboardTitle: "Graveyard",
+  });
+  assert.deepEqual(counterChanges(counter, { emoji: "  ", leaderboard: "  " }), {});
+});
+
+test("typed words are added and removed with ; between them", () => {
+  const counter = { name: "Deaths", words: ["rip", "oops", "wipe"] };
+  assert.deepEqual(counterChanges(counter, { addWords: "gg; RIP" }), { words: ["rip", "oops", "wipe", "gg"] });
+  assert.deepEqual(counterChanges(counter, { removeWords: "Oops; nope ; wipe" }), { words: ["rip"] });
+  assert.deepEqual(counterChanges(counter, { addWords: "gg", removeWords: "rip" }), { words: ["oops", "wipe", "gg"] });
+});
+
+test("bad typed counter options are turned down", () => {
+  const counter = { name: "Deaths", words: [] };
+  assert.throws(() => counterChanges(counter, { name: "  " }), /name/);
+  assert.throws(() => counterChanges(counter, { emoji: "hello" }), /emoji/);
+  assert.throws(() => counterChanges(counter, { leaderboard: "x".repeat(101) }), /100/);
+  assert.throws(() => counterChanges(counter, { addWords: " ; " }), /word/);
+});
+
+test("a counter's summary shows its words, emoji and leaderboard name, or what's used instead", () => {
+  assert.equal(
+    describeCounter({ name: "Deaths", words: [], reaction: null, leaderboardTitle: null }),
+    "**Trigger words:** none, so it only goes up with /count add\n**Reaction:** the default check mark\n**Leaderboard name:** Deaths leaderboard"
+  );
+  assert.equal(
+    describeCounter({ name: "Bad words", words: ["darn", "heck"], reaction: "\u{1F602}", leaderboardTitle: "Naughty List" }),
+    "**Trigger words:** darn, heck\n**Reaction:** \u{1F602}\n**Leaderboard name:** Naughty List"
+  );
+});

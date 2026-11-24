@@ -1,10 +1,13 @@
 // /settings: lets server admins pick the verification and streaming roles from Discord's own role picker, and make and change the /count counters.
+// The roles can also be typed as options (/settings guild-role:@Guild); with no options it opens the menu.
 //   guildChecks      what findProblems needs to know about the server (does a role exist, can the bot give it)
 //   mainView         the overview: every setting, what's missing, problems, and a list to pick one to change
 //   roleView         one role's screen: a role picker and Back
 //   roleMapView      the class role list's screen: Add, Remove one, Back
 //   addEntryModal    the pop-up for adding a class with its role
 //   save             saves a setting, refreshes the verification settings and logs the change
+//   buildCommand     the /settings command with an option for each role setting, plus class and class-role
+//   saveTypedOptions saves the typed options and says what was saved, with any problems with those roles
 //   handleComponent  handles every button, list and pop-up on these screens, and passes counter ones to counters/settingsScreens.js
 
 const {
@@ -31,6 +34,8 @@ const {
   describeValue,
   addRoleMapEntry,
   removeRoleMapEntry,
+  changesFromOptions,
+  CLASSES,
 } = require("../settings/ids");
 const { countersView, handleCounterComponent } = require("../counters/settingsScreens");
 const { getStore } = require("../store");
@@ -195,17 +200,62 @@ async function handleComponent(interaction) {
   }
 }
 
-module.exports = {
-  data: new SlashCommandBuilder()
+const ROLE_SETTINGS = SETTINGS.filter((setting) => setting.kind === "role");
+
+function buildCommand() {
+  const command = new SlashCommandBuilder()
     .setName("settings")
-    .setDescription("Pick the verification and streaming roles, and make and change the /count counters")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+    .setDescription("Pick the verification and streaming roles, and the counters. Fill in options to set roles directly")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+  for (const setting of ROLE_SETTINGS) {
+    command.addRoleOption((option) => option.setName(setting.option).setDescription(setting.help.slice(0, 100)));
+  }
+  return command
+    .addStringOption((option) =>
+      option
+        .setName("class")
+        .setDescription("A class to give a role to. Fill in class-role too")
+        .addChoices(CLASSES.map((name) => ({ name, value: name })))
+    )
+    .addRoleOption((option) => option.setName("class-role").setDescription("The role for the class picked in class"));
+}
+
+function saveTypedOptions(interaction) {
+  const typed = Object.fromEntries(
+    ROLE_SETTINGS.map((setting) => [setting.key, interaction.options.getRole(setting.option)?.id])
+  );
+  const className = interaction.options.getString("class");
+  const classRoleId = interaction.options.getRole("class-role")?.id;
+  const values = getStore().getServerSettings();
+  let changes;
+  try {
+    changes = changesFromOptions(values, { ...typed, className, classRoleId });
+  } catch (error) {
+    return interaction.reply({ content: error.message, flags: MessageFlags.Ephemeral });
+  }
+  for (const { setting, value } of changes) save(interaction, setting, value);
+
+  const saved = changes.map(({ setting, value }) =>
+    setting.kind === "roleMap" ? `- Class role for ${className}: <@&${classRoleId}>` : `- ${setting.label}: <@&${value}>`
+  );
+  const labels = changes.map(({ setting }) => setting.label);
+  const problems = findProblems(getStore().getServerSettings(), guildChecks(interaction.guild)).filter((problem) =>
+    labels.some((label) => problem.startsWith(`${label}:`))
+  );
+  const lines = ["**Saved:**", ...saved];
+  if (problems.length) lines.push("", "**Problems:**", ...problems.map((p) => `- ${p}`));
+  return interaction.reply({ content: lines.join("\n"), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+}
+
+module.exports = {
+  data: buildCommand(),
   customIdPrefix: PREFIX,
   handleComponent,
   async execute(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
       return interaction.reply({ content: NOT_ADMIN, flags: MessageFlags.Ephemeral });
     }
+    if (interaction.options.data.length) return saveTypedOptions(interaction);
     return interaction.reply({ ...mainView(interaction.guild), flags: MessageFlags.Ephemeral });
   },
 };

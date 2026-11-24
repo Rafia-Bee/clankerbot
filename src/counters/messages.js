@@ -8,6 +8,7 @@
 //   leaderboardReply       the leaderboard: its name, then place, member and count on each line
 //   parseLeaderboardTitle  checks a typed leaderboard name and tidies its spaces; null when empty
 //   leaderboardTitleFor    the counter's leaderboard name, or "<counter name> leaderboard"
+//   describeCounter        a counter's words, emoji and leaderboard name, saying what's used when one isn't picked
 
 const MAX_TITLE_LENGTH = 100;
 
@@ -58,7 +59,17 @@ function leaderboardTitleFor(counter) {
   return counter.leaderboardTitle || `${counter.name} leaderboard`;
 }
 
+function describeCounter(counter) {
+  const words = counter.words.length ? counter.words.join(", ") : "none, so it only goes up with /count add";
+  return [
+    `**Trigger words:** ${words}`,
+    `**Reaction:** ${counter.reaction ?? "the default check mark"}`,
+    `**Leaderboard name:** ${leaderboardTitleFor(counter)}`,
+  ].join("\n");
+}
+
 module.exports = {
+  describeCounter,
   addedReply,
   countReply,
   removedReply,

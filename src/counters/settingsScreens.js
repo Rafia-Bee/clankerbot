@@ -25,22 +25,13 @@ const { getStore } = require("../store");
 const { MAX_COUNTERS, parseCounterName } = require("./rules");
 const { MAX_WORDS, addWords, removeWord } = require("./words");
 const { parseReactionEmoji, canUseEmoji } = require("./reaction");
-const { parseLeaderboardTitle, leaderboardTitleFor } = require("./messages");
+const { parseLeaderboardTitle, describeCounter } = require("./messages");
 
 const id = (...parts) => ["settings", "counter", ...parts].join(":");
 const COLOR = 0x8e5cf7;
 
 function button(customId, label, style = ButtonStyle.Secondary) {
   return new ButtonBuilder().setCustomId(customId).setLabel(label).setStyle(style);
-}
-
-function describeCounter(counter) {
-  const words = counter.words.length ? counter.words.join(", ") : "none, so it only goes up with /count add";
-  return [
-    `**Trigger words:** ${words}`,
-    `**Reaction:** ${counter.reaction ?? "the default check mark"}`,
-    `**Leaderboard name:** ${leaderboardTitleFor(counter)}`,
-  ].join("\n");
 }
 
 function countersView(guildId, note = "") {
@@ -269,4 +260,4 @@ async function handleCounterComponent(interaction, action, rawId) {
   }
 }
 
-module.exports = { countersView, handleCounterComponent };
+module.exports = { countersView, confirmDeleteView, botCanUseEmoji, handleCounterComponent };

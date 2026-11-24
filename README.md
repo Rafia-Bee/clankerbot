@@ -86,6 +86,14 @@ Run `/settings` in Discord. Only server admins (people with **Manage Server**) c
 
 Until the Guild, Trusted and Guest roles are picked, verification is off: the Verify button, `/verify-setup` and `/verify-manual` say so. The rest of the bot works as normal.
 
+**Quicker way: type the roles.** Fill in options on `/settings` to set roles without the menu. For example:
+
+- `/settings guild-role:@Guild trusted-role:@Trusted guest-role:@Guest` sets all three at once.
+- `/settings streaming-role:@Live` sets just the streaming role.
+- `/settings class:Ranger class-role:@Ranger` sets one class role (fill in both).
+
+Only what you fill in changes. The bot replies with what it saved, and any problems with those roles. To remove something (like the streaming role or a class), use the menu.
+
 Under **Problems**, the bot warns you when a role you picked was deleted, or sits above its own role (see step 4). Every change is written to the bot's log, with who changed it.
 
 The roles are saved in the bot's database (`data/clanker.db`, or `/data/clanker.db` on Fly.io), not in `.env`. `npm run db:reset` wipes them too.
@@ -172,7 +180,8 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/ticket-panels` | List the ticket panels and how full their categories are, and edit or delete them | Manage Server |
 | `/hub-setup channel` | Make a "Create a VC" voice channel. Anyone who joins it gets their own voice channel. Pick a `channel` to use an existing voice channel instead. See [Voice hubs](#voice-hubs). | Manage Server |
 | `/role-picker-setup role message button` | Post a button that gives members `role`, and takes it away when they click again. See [Role buttons](#role-buttons). | Manage Roles |
-| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the [streaming role](#streaming-role), and make and change the [counters](#counters). See [step 6](#6-pick-the-verification-roles). | Manage Server |
+| `/settings` | Pick the Guild, Trusted, Guest and class roles that verification gives out, the [streaming role](#streaming-role), and make and change the [counters](#counters). Opens a menu, or fill in options like `guild-role` to set roles straight away. See [step 6](#6-pick-the-verification-roles). | Manage Server |
+| `/counter create`, `edit`, `delete` | Make, change or delete a [counter](#counters) by typing, instead of using the menu. | Manage Server |
 | `/verify-setup message` | Post the Verify message and button in the channel. `message` is optional text above the button (type `\n` for a new line). | Manage Server |
 | `/verify-manual user name roles` | Verify a member by hand with their character name. See [Verifying someone by hand](#verifying-someone-by-hand). | Manage Roles |
 | `/recheck user` | Look verified members up again: fix their nicknames, and move them between the Guild and Trusted roles and Guest if they joined or left the legion. Pick a `user` for one member, or leave it empty for everyone. See [Rechecking members](#rechecking-members). | Manage Roles |
@@ -414,6 +423,14 @@ Each counter has:
   - **Change emoji.** Paste one emoji (on Windows, press the Windows key and `.` to open the emoji picker). For a server's own emoji, type `\:name:` in any Discord chat and send it: Discord shows something like `<:name:123456789>`, which you copy into the box. The bot can only use server emojis from servers it's in. **Use the default emoji** goes back to the check mark.
   - **Rename** the counter or its leaderboard. Leave the leaderboard name empty to use the default.
   - **Delete counter.** The bot asks first. Deleting a counter deletes everyone's count on it too.
+
+**Quicker way: type it.** `/counter` does the same as the menu, in one line:
+
+- `/counter create name:Raid deaths` makes a counter. You can also fill in `words` (with `;` between them), `emoji` and `leaderboard` right away.
+- `/counter edit counter:Raid deaths add-words:wipe; rip` changes a counter. Only what you fill in changes: `name` renames it, `add-words` and `remove-words` add and remove trigger words, `emoji` and `leaderboard` change those.
+- `/counter delete counter:Raid deaths` asks first, with a button, then deletes it and everyone's count on it.
+
+To put the emoji or leaderboard name back to the default, use the menu.
 
 A message adds 1 at most to each counter, however many of its trigger words it has. If a message has words from two counters, both go up.
 

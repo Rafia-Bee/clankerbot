@@ -4,9 +4,11 @@
 //   choicesFor        the counter names to suggest while someone types the counter option
 //   countersHit       the counters whose trigger words are in a message
 //   reactionsFor      the emojis to react with for those counters, each one once
+//   counterChanges    turns the options typed in /counter into changes for a counter; empty ones are skipped, bad ones throw
 
-const { hasTriggerWord } = require("./words");
-const { reactionFor } = require("./reaction");
+const { hasTriggerWord, addWords, removeWord } = require("./words");
+const { reactionFor, parseReactionEmoji } = require("./reaction");
+const { parseLeaderboardTitle } = require("./messages");
 
 const MAX_COUNTERS = 10;
 const MAX_NAME_LENGTH = 50;
@@ -35,4 +37,18 @@ function reactionsFor(counters) {
   return [...new Set(counters.map(reactionFor))];
 }
 
-module.exports = { MAX_COUNTERS, parseCounterName, choicesFor, countersHit, reactionsFor };
+function counterChanges(counter, { name, addWords: wordsToAdd, removeWords: wordsToRemove, emoji, leaderboard }) {
+  const changes = {};
+  if (name != null) changes.name = parseCounterName(name);
+  let words = counter.words;
+  if (wordsToRemove) words = wordsToRemove.split(";").reduce(removeWord, words);
+  if (wordsToAdd != null) words = addWords(words, wordsToAdd);
+  if (words !== counter.words) changes.words = words;
+  const reaction = emoji == null ? null : parseReactionEmoji(emoji);
+  if (reaction) changes.reaction = reaction;
+  const leaderboardTitle = leaderboard == null ? null : parseLeaderboardTitle(leaderboard);
+  if (leaderboardTitle) changes.leaderboardTitle = leaderboardTitle;
+  return changes;
+}
+
+module.exports = { MAX_COUNTERS, parseCounterName, choicesFor, countersHit, reactionsFor, counterChanges };

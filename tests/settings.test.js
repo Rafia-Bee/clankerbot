@@ -162,3 +162,37 @@ test("server settings in the database", async (t) => {
     assert.equal(store.getServerSettings().TRUSTED_ROLE_ID, undefined);
   });
 });
+
+const { changesFromOptions, CLASSES } = require("../src/settings/ids");
+
+test("every role setting has an option name for typing it in /settings", () => {
+  const roles = SETTINGS.filter((s) => s.kind === "role");
+  assert.deepEqual(roles.map((s) => s.option), ["guild-role", "trusted-role", "guest-role", "streaming-role"]);
+  assert.deepEqual(CLASSES, ["Gladiator", "Templar", "Assassin", "Ranger", "Sorcerer", "Spiritmaster", "Cleric", "Chanter"]);
+});
+
+test("typed options turn into only the settings that were filled in", () => {
+  assert.deepEqual(changesFromOptions({}, {}), []);
+  const changes = changesFromOptions({}, { GUILD_ROLE_ID: "1", STREAMING_ROLE_ID: "4", GUEST_ROLE_ID: null });
+  assert.deepEqual(
+    changes.map((c) => [c.setting.key, c.value]),
+    [
+      ["GUILD_ROLE_ID", "1"],
+      ["STREAMING_ROLE_ID", "4"],
+    ]
+  );
+});
+
+test("a typed class and role are added to the class list, replacing that class's old role", () => {
+  const values = { CLASS_ROLES: [{ name: "Ranger", roleId: "1" }, { name: "Cleric", roleId: "2" }] };
+  const [change] = changesFromOptions(values, { className: "Ranger", classRoleId: "9" });
+  assert.equal(change.setting.key, "CLASS_ROLES");
+  assert.deepEqual(change.value, [{ name: "Ranger", roleId: "9" }, { name: "Cleric", roleId: "2" }]);
+  const [added] = changesFromOptions({}, { className: "Chanter", classRoleId: "3" });
+  assert.deepEqual(added.value, [{ name: "Chanter", roleId: "3" }]);
+});
+
+test("a class without a role, or a role without a class, is turned down", () => {
+  assert.throws(() => changesFromOptions({}, { className: "Ranger" }), /class and class-role/);
+  assert.throws(() => changesFromOptions({}, { classRoleId: "3", GUILD_ROLE_ID: "1" }), /class and class-role/);
+});
