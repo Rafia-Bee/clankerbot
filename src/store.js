@@ -1,6 +1,6 @@
-// The bot's database: which character each verified member linked, plus the ticket, voice and /count tables.
+// The bot's database: which character each verified member linked, plus the ticket, voice, /count and /hidegifs tables.
 //   addManualRolesColumn        adds the column for mod-picked roles to databases made before it existed
-//   openStore                   opens (or creates) the database file and returns the functions below, the ticket, voice and /count ones
+//   openStore                   opens (or creates) the database file and returns the functions below, the ticket, voice, /count and /hidegifs ones
 //   getVerification             a member's saved character
 //   findClaimOwner              which member a character is linked to, by character ID or confirmed name
 //   saveVerification            links a character to a member, replacing their old one (and any mod-picked roles); false if someone else has it
@@ -19,6 +19,7 @@ const Database = require("better-sqlite3");
 const { TICKET_SCHEMA, createTicketStore } = require("./tickets/store");
 const { VOICE_SCHEMA, createVoiceStore } = require("./voice/store");
 const { COUNTER_SCHEMA, createCounterStore } = require("./counters/store");
+const { HIDE_GIFS_SCHEMA, createHideGifsStore } = require("./hideGifs/store");
 
 const DEFAULT_DB_PATH = path.join(__dirname, "..", "data", "clanker.db");
 
@@ -73,6 +74,7 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
   db.exec(TICKET_SCHEMA);
   db.exec(VOICE_SCHEMA);
   db.exec(COUNTER_SCHEMA);
+  db.exec(HIDE_GIFS_SCHEMA);
 
   const statements = {
     get: db.prepare("SELECT * FROM verifications WHERE discord_id = ?"),
@@ -145,6 +147,7 @@ function openStore(dbPath = process.env.CLANKER_DB_PATH || DEFAULT_DB_PATH) {
     ...createTicketStore(db),
     ...createVoiceStore(db),
     ...createCounterStore(db),
+    ...createHideGifsStore(db),
     getVerification: (discordId) => statements.get.get(discordId),
     findClaimOwner,
     saveVerification(row) {

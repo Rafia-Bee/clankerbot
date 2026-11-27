@@ -4,6 +4,7 @@
 // Watches chat for the /count counters' trigger words (see counters/chat.js), without keeping chat messages in memory.
 // Suggests choices while someone types a command option that asks for them (like /count's counter).
 // Gives the streaming role to members while they're live on Twitch (see streaming/role.js).
+// Hides GIF previews in channels where /hidegifs is on (see hideGifs/hider.js).
 //   checkSettings      stops the bot with a clear message when a setting is missing or wrong, copies old role lines
 //                      from .env into the database once, and warns when verification roles aren't picked yet
 //   loadCommands       reads every command file in src/commands, and which buttons each one handles
@@ -23,6 +24,7 @@ const { startTicketCleanup } = require("./tickets/cleanup");
 const { createVoiceHubs } = require("./voice/hub");
 const { handleCounterMessage } = require("./counters/chat");
 const { createStreamingRole } = require("./streaming/role");
+const { getGifHider } = require("./hideGifs/hider");
 
 function checkSettings() {
   const missing = missingSettings(process.env, ["BOT_TOKEN"]);
@@ -111,6 +113,7 @@ client.once("clientReady", () => {
   startTicketCleanup(client);
   voiceHubs.checkOnStartup().catch((error) => console.error("Voice hub startup check failed:", error));
   streamingRole.checkOnStartup().catch((error) => console.error("Streaming role startup check failed:", error));
+  getGifHider().checkOnStartup(client).catch((error) => console.error("Hide GIFs startup check failed:", error));
 });
 
 client.on("channelDelete", (channel) => {
@@ -128,6 +131,7 @@ client.on("presenceUpdate", (oldPresence, newPresence) => {
 
 client.on("messageCreate", (message) => {
   handleCounterMessage(message).catch((error) => console.error("Trigger word check failed:", error));
+  getGifHider().handleMessage(message);
 });
 
 client.on("error", (error) => {

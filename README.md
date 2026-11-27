@@ -194,6 +194,7 @@ To deploy on every push to `master` instead, add these lines under `on:` in `.gi
 | `/count remove counter user amount` | Take 1, or `amount` (up to 100), off `user`'s count on a counter. It never goes below 0. | Manage Server |
 | `/count reset counter user` | Put `user`'s count on a counter back to 0. | Manage Server |
 | `/purge amount` | Delete the last 1 to 100 messages in the channel. Only you see the reply. | Manage Messages |
+| `/hidegifs channel for timer` | For a while, hide the preview of every GIF posted in `channel`, a set time after it's posted. The link stays. See [Hiding GIF previews](#hiding-gif-previews). | Manage Messages |
 
 Discord doesn't let bots bulk delete messages older than 14 days, so `/purge` skips those and tells you how many it skipped.
 
@@ -440,6 +441,22 @@ Trigger words only count as whole words, and capitals don't matter. So if the wo
 
 Swapping in lookalike letters doesn't get around it. Letters from other alphabets that look the same (like the Russian `а`), accents (`cát`), fancy fonts (`𝐜𝐚𝐭`) and hidden characters typed inside a word are all read as the plain word.
 
+## Hiding GIF previews
+
+`/hidegifs` turns big GIFs in a channel back into plain links for a while. The GIF still shows for a moment, then its preview is hidden for everyone. The link stays, so anyone can still click it. Nobody gets a notification and nothing is deleted.
+
+- `channel`: where to do it.
+- `for`: how long to keep doing it, from 1 minute up to 30 days. Like `30m`, `2h` or `1d 12h`.
+- `timer` (optional): how long each GIF shows before its preview is hidden, up to 1 day. Like `30s`, `5m` or `1m 30s`. A plain number is seconds. Leave it empty to hide previews straight away.
+
+Example: `/hidegifs channel:#memes for:2h timer:30s` means for the next 2 hours, each GIF in #memes shows for 30 seconds and then turns into a link.
+
+- When you run it, GIFs in the channel's last 200 messages are handled too. Ones older than the timer are hidden straight away.
+- To stop early, run it again with `for:off`. Running it again with new times replaces the old ones.
+- It keeps going after the bot restarts. GIFs posted while the bot was off are caught up on (from the last 100 messages).
+
+What counts as a GIF: Tenor, Giphy and Klipy links (that's what Discord's GIF button sends) and any link ending in `.gif`. A GIF uploaded as a file is an attachment, not a preview, so it can't be hidden. If a message has a GIF and another link, Discord hides all previews in that message, not only the GIF. The bot needs **Manage Messages** and **Read Message History** in the channel.
+
 ## Character lookups
 
 `/whois` looks characters up on the official AION 2 site ([aion2.plaync.com](https://aion2.plaync.com)) first. When that doesn't answer, it asks [aion2index.com](https://aion2index.com), and then [shugo.gg](https://shugo.gg). `LOOKUP_SOURCES` in `.env` changes the order, or picks fewer sites (`plaync`, `aion2index`, `shugo`).
@@ -464,6 +481,7 @@ The official site needs no key. It's the same data NCSOFT's own character page s
 - **"The application did not respond":** the bot isn't running. Start it with `npm start`, or check `fly logs` if it's on Fly.io.
 - **"I need View Channel, Read Message History and Manage Messages in this channel":** give the bot's role those permissions, in Server Settings or in that channel's settings.
 - **The bot won't start and says settings are missing:** fill those in `.env`.
+- **`/hidegifs` doesn't hide a GIF:** check the bot's role has **Manage Messages** in that channel. GIFs uploaded as files can't be hidden, only links. Links from sites other than Tenor, Giphy and Klipy are only caught when they end in `.gif`.
 - **Verify says "I couldn't update everything on your profile":** drag the bot's role above the Guild, Trusted and Guest roles (setup step 4), and check it has Manage Roles and Manage Nicknames. The bot's log says which part failed. The server owner can never be renamed by a bot.
 - **"Verification isn't set up yet":** a server admin needs to pick the Guild, Trusted and Guest roles with `/settings`.
 - **A role isn't given out, or `/settings` shows a problem:** open `/settings` and read the **Problems** list. Usually the role was deleted (pick the new one) or the bot's role needs moving higher (step 4).
